@@ -1,0 +1,90 @@
+/* TopBar.css */
+.topbar {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 100%;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.user-role {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 16px 20px;
+  }
+
+  .page-title {
+    font-size: 1.25rem;
+  }
+
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .user-name {
+    font-size: 0.9rem;
+  }
+
+  .user-role {
+    font-size: 0.75rem;
+  }
+}
