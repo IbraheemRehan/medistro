@@ -1,276 +1,163 @@
-MedDistro - Pharmacy Distribution Management System
-A comprehensive React-based pharmacy distribution management platform that connects distributors, pharmacies, and employees in a seamless ecosystem.
-🎯 Overview
-MedDistro is a full-featured web application built with React that enables:
-Distributors to manage stock, process orders, track employees
-Pharmacies to discover distributors and place orders
-Employees to manage assigned tasks
-Admins to oversee the entire system
-✨ Features
-For Distributors
-📦 Stock Management (add, update, track inventory)
-📋 Order Management (approve, reject, dispatch orders)
-👥 Employee Management (assign tasks, track progress)
-📄 Invoice Generation & Payment Tracking
-📊 Dashboard with analytics
-For Pharmacies
-🔍 Find & Browse Distributors
-🛒 Place Orders with Multiple Items
-📋 Track Order Status
-🏥 View Order History
-📄 Invoice & Payment Management
-For Employees
-✓ Task Management
-📈 Progress Tracking
-🎯 Task Status Updates
-For Admins
-📊 System Analytics
-👥 User Management
-📈 Performance Metrics
-🔐 System Oversight
-📁 Project Structure
-```
-src/
-├── pages/
-│   ├── Login.jsx
-│   ├── Register.jsx
-│   ├── Distributor/
-│   │   ├── Dashboard.jsx
-│   │   ├── StockManagement.jsx
-│   │   ├── OrderManagement.jsx
-│   │   ├── EmployeeManagement.jsx
-│   │   └── Invoices.jsx
-│   ├── Pharmacy/
-│   │   ├── Dashboard.jsx
-│   │   ├── PlaceOrder.jsx
-│   │   ├── MyOrders.jsx
-│   │   ├── FindDistributors.jsx
-│   │   └── Invoices.jsx
-│   └── Admin/
-│       └── Dashboard.jsx
-├── components/
-│   ├── SidebarNav.jsx
-│   ├── TopBar.jsx
-│   ├── Modal.jsx
-│   └── Invoice.jsx
-├── context/
-│   └── AuthContext.jsx
-├── styles/
-│   ├── App.css
-│   ├── Auth.css
-│   ├── Dashboard.css
-│   ├── SidebarNav.css
-│   ├── TopBar.css
-│   ├── Modal.css
-│   ├── StockManagement.css
-│   ├── OrderManagement.css
-│   ├── EmployeeManagement.css
-│   ├── PlaceOrder.css
-│   └── Invoice.css
-└── App.jsx
-```
-🚀 Installation & Setup
+Medistro — Pharmacy Distribution Frontend
+
+Professional React frontend for the Medistro pharmacy distribution platform. This app provides role-based UIs for Distributors, Pharmacies, Employees and Admins to manage inventory, orders, invoices and users.
+
+Key features
+- Role-based dashboards (Distributor, Pharmacy, Employee, Admin)
+- Stock and order management, invoice generation, employee task management
+- Responsive UI with reusable components and printable invoices
+- Ready to integrate with the Medistro backend API
+
+Tech stack
+- React 19, react-scripts, react-router-dom
+- Axios for API calls, Recharts for charts, html2canvas + jsPDF for invoice export
+
 Prerequisites
-Node.js (v14 or higher)
-npm or yarn package manager
-Step 1: Create React App
+- Node.js v14+ and npm or yarn
+
+Quick start (development)
+1. Install dependencies
+
 ```bash
-npx create-react-app medistro
-cd medistro
+npm install
 ```
-Step 2: Install Dependencies
-```bash
-npm install react-router-dom
-```
-Step 3: File Structure Setup
-Create the following folder structure in `src/`:
-```
-src/
-├── pages/
-│   ├── Distributor/
-│   ├── Pharmacy/
-│   └── Admin/
-├── components/
-├── context/
-└── styles/
-```
-Step 4: Copy Files
-Copy all the provided files to their respective locations:
-Pages:
-`pages/Login.jsx`, `pages/Register.jsx`
-`pages/Distributor/*.jsx` files
-`pages/Pharmacy/*.jsx` files
-`pages/Admin/*.jsx` files
-Components:
-`components/SidebarNav.jsx`
-`components/TopBar.jsx`
-`components/Modal.jsx`
-`components/Invoice.jsx`
-Context:
-`context/AuthContext.jsx`
-Styles:
-All `.css` files in `styles/` folder
-Root:
-`App.jsx` (replace default)
-Step 5: Update App.js imports
-Make sure the following imports are correct at the top of `App.jsx`:
-```javascript
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-```
-Step 6: Run the Application
+
+2. Start the dev server
+
 ```bash
 npm start
 ```
-The application will open at `http://localhost:3000`
-🔐 Demo Credentials
-Distributor Account
-Email: distributor@demo.com
-Password: demo123
-Pharmacy Account
-Email: pharmacy@demo.com
-Password: demo123
-Admin Account
-Email: admin@demo.com
-Password: demo123
-Employee Account
-Email: employee@demo.com
-Password: demo123
-🎨 Design Features
-Modern UI: Clean, professional interface with gradient accents
-Responsive Design: Works seamlessly on desktop, tablet, and mobile
-Dark/Light Theme Ready: CSS variables for easy theme switching
-Smooth Animations: Subtle transitions and hover effects
-Intuitive Navigation: Clear user flow with sidebar navigation
-🗂️ File Details
-Core Files
-App.jsx
-Main application component
-Routing configuration for all user roles
-Protected routes based on authentication
-AuthContext.jsx
-Global authentication state management
-Login/logout functionality
-Token management
-Page Components
-Dashboard Pages
-Role-specific dashboards
-Key metrics and statistics
-Quick action buttons
-Recent activity feeds
-Stock Management
-Add/edit medicines
-Track inventory levels
-Low stock alerts
-Stock filtering and search
-Order Management
-View pending/approved/dispatched orders
-Change order status
-Generate invoices
-Order tracking
-Employee Management
-Add new employees
-Assign tasks
-Track task progress
-View employee performance
-Place Order (Pharmacy)
-Browse distributors
-Select medicines
-Manage cart
-Confirm order
-Find Distributors
-Search distributors
-View distributor details
-Rating and reviews
-Quick order placement
-Shared Components
-SidebarNav.jsx
-Navigation menu
-Role-based menu items
-Logout functionality
-TopBar.jsx
-User info display
-Current page title
-User role indicator
-Modal.jsx
-Reusable dialog component
-Form inputs
-Action buttons
-Invoice.jsx
-Professional invoice template
-Print/download functionality
-Payment tracking
-Style Files
-All CSS files follow a consistent design system:
-CSS variables for colors and spacing
-Responsive grid layouts
-Mobile-first approach
-Print-friendly styles
-💡 Usage Examples
-Adding Stock (Distributor)
-Navigate to Stock Management
-Click "Add New Medicine"
-Fill in medicine details
-Set quantity and pricing
-Submit
-Placing Order (Pharmacy)
-Go to Place Order
-Select a distributor
-Add medicines from catalog
-Adjust quantities
-Review and confirm
-Managing Employees (Distributor)
-Go to Employee Management
-Add new employee
-Assign tasks
-Track progress
-Update task status
-🔄 Data Flow
-```
-User Login
-    ↓
-AuthContext (Token Storage)
-    ↓
-Role-Based Routing
-    ↓
-Dashboard/Features
-    ↓
-Modal/Forms
-    ↓
-Local State Management
-    ↓
-Display Data
-```
-🛠️ API Integration (Ready for Backend)
-The application is structured to easily integrate with a backend API:
-Current: Mock Data
-All components use dummy data for demonstration
-Next: Backend Integration
-Replace mock data with API calls:
-```javascript
-// Example - Current (Mock)
-const [inventory, setInventory] = useState([...dummyData]);
 
-// Example - Backend Ready
-useEffect(() => {
-  fetchInventory().then(data => setInventory(data));
-}, []);
+The app runs at http://localhost:3000 by default. This project sets a proxy to `http://localhost:4000` for API requests — update `package.json` if your backend runs on a different port.
+
+Build for production
+
+```bash
+npm run build
 ```
-📱 Responsive Breakpoints
-Desktop: 1024px and above
-Tablet: 768px to 1023px
-Mobile: Below 768px
-📄 Licenses & Dependencies
-React 18+
-React Router v6+
-CSS3 (No external CSS libraries)
-JavaScript ES6+
-✅ Browser Support
-Chrome (latest)
-Firefox (latest)
-Safari (latest)
-Edge (latest)
----
-Version: 1.0.0  
-Last Updated: March 2024  
-Built with React 18 + React Router v6
+
+This outputs an optimized `build/` folder ready to be served by any static server or deployed behind the backend.
+
+Environment & backend integration
+- The frontend expects a REST API that follows the server routes (authentication, medicines, orders, invoices, users). Replace mock data with API calls in the `src` components (see `context/AuthContext.jsx` and `pages/*` for examples).
+- If the backend is running locally on port 4000, the provided `proxy` in `package.json` will forward API requests to it.
+
+Scripts
+- `npm start` — development server
+- `npm run build` — production build
+- `npm test` — run tests
+
+Useful paths
+- Main app: `src/App.jsx`
+- Auth state: `src/context/AuthContext.jsx`
+- Pages: `src/pages/` (Distributor, Pharmacy, Admin)
+- Shared components: `src/components/`
+
+Testing credentials (demo)
+- Distributor: distributor@demo.com / demo123
+- Pharmacy: pharmacy@demo.com / demo123
+- Admin: admin@demo.com / demo123
+
+Notes & next steps
+- To fully enable the app, run the backend and set up required environment variables (see server README). You may also seed test accounts using the server `scripts/` utilities.
+
+License
+This project is provided for educational purposes.
+
+Version: 1.0.0
+Last updated: 2026-05
+ 
+About this document
+This README expands on the frontend's purpose, architecture, how to run it locally, development tips, and a reflection on what was learned while building the project. Use this as the primary reference for contributors and evaluators.
+
+Project summary
+Medistro frontend is a role-based React application that provides interfaces for Distributors, Pharmacies, Employees and Admins to manage inventory, orders, invoices and user tasks. It prioritizes a clean UX, printable invoices, and a modular component structure so the UI can be integrated with a backend API.
+
+Architecture & key concepts
+- Single Page Application (SPA) built with React and `react-router-dom` for client-side routing.
+- Global auth state managed with a React context (`src/context/AuthContext.jsx`) which stores tokens and user role information.
+- API calls are made with `axios` (replace mock data with real endpoints in `src` components).
+- Reusable components: `src/components/` contains shared UI like `SidebarNav`, `TopBar`, `Modal`, and `Invoice`.
+
+Important design decisions
+- Role-based navigation and protected routes to ensure only authorized users see specific pages.
+- Separation of concerns: UI logic in components/pages, auth logic in context, and API layer centralized where appropriate.
+
+Detailed run instructions
+Prerequisites
+- Node.js v14+ and npm (or yarn)
+
+Local development (frontend)
+1. Install dependencies
+
+```bash
+cd medistro
+npm install
+```
+
+2. Start the dev server
+
+```bash
+npm start
+```
+
+3. Open the app
+
+Visit http://localhost:3000 in your browser. The frontend is configured with a proxy to `http://localhost:4000` so API calls will be forwarded to the backend when it runs locally.
+
+Building for production
+
+```bash
+npm run build
+```
+
+This generates an optimized `build/` directory for static hosting.
+
+Testing
+
+```bash
+npm test
+```
+
+Environment & configuration
+- The frontend does not require a `.env` by default; API base URLs can be modified in axios instances or by changing the `proxy` field in `package.json`.
+
+Connecting to the backend
+- Ensure the backend is running on the same host/port used by `proxy` (by default `http://localhost:4000`). If your backend runs at a different URL, either update the `proxy` in `package.json` or set the API base URL where `axios` is configured.
+
+Development notes & tips
+- When adding new API calls, centralize them in a `src/api/` helper so swapping base URLs or adding interceptors is easier.
+- Use `AuthContext` to manage token refresh and protected-route wrappers.
+- Invoice export uses `html2canvas` + `jsPDF` — test print/export flows in the browser.
+
+Project structure (important files)
+- `src/App.jsx` — main routes and app shell
+- `src/context/AuthContext.jsx` — authentication provider and hooks
+- `src/pages/` — top-level pages for each role
+- `src/components/` — reusable UI components
+
+What I learned (frontend)
+- React fundamentals: component composition, hooks (`useState`, `useEffect`, `useContext`) and controlled forms.
+- Routing and protected routes with `react-router-dom`.
+- State and side-effect patterns for API-driven UIs.
+- Integrating third-party libraries like `recharts` for charts and `html2canvas`/`jsPDF` for exporting UI to PDF.
+- Building a role-based UI with clear separation between presentation and business logic.
+- Practical debugging and developer tooling (React DevTools, browser network panel).
+
+Common issues & troubleshooting
+- Blank page on start: check console for missing imports or failing module resolutions.
+- CORS / API errors: ensure backend `medistro_server` is running and proxy or base URL is correct.
+
+Next steps / enhancements
+- Add a centralized API client (`src/api/`) and environment-driven config.
+- Replace any remaining mock data with real endpoints and add client-side caching.
+- Add end-to-end tests to validate critical user flows (login, place order, generate invoice).
+
+Contributing
+- Fork the repo, create a feature branch, open a PR with a concise description, and include screenshots for UI changes.
+
+Acknowledgements
+- Built as part of an academic project demonstrating full-stack skills in React and Node.
+
+Contact
+- For questions about the frontend implementation, inspect `src/` or open an issue in the project tracker.
