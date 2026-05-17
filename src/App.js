@@ -1,86 +1,130 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import './styles/App.css';
 
-// Auth
+// Auth pages
 import Login from './pages/Login';
 import Register from './pages/Register';
+import About from './pages/Shared/About';
+import VerifyEmail from './pages/Shared/VerifyEmail';
+import ForgotPassword from './pages/Shared/ForgotPassword';
 
-// Distributor Pages
-import DistributorDashboard from './pages/Distributor/Dashboard';
-import StockManagement from './pages/Distributor/StockManagement';
-import OrderManagement from './pages/Distributor/OrderManagement';
-import EmployeeManagement from './pages/Distributor/EmployeeManagement';
-import DistributorInvoices from './pages/Distributor/Invoices';
+// Distributor pages
+import DistributorDashboard  from './pages/Distributor/Dashboard';
+import StockManagement       from './pages/Distributor/StockManagement';
+import OrderManagement       from './pages/Distributor/OrderManagement';
+import EmployeeManagement    from './pages/Distributor/EmployeeManagement';
+import DistributorInvoices   from './pages/Distributor/Invoices';
 
-// Pharmacy Pages
+// Employee pages
+import EmployeeDashboard from './pages/Employee/Dashboard';
+
+// Pharmacy pages
 import PharmacyDashboard from './pages/Pharmacy/Dashboard';
-import PlaceOrder from './pages/Pharmacy/PlaceOrder';
-import MyOrders from './pages/Pharmacy/MyOrders';
-import PharmacyInvoices from './pages/Pharmacy/Invoices';
-import FindDistributors from './pages/Pharmacy/FindDistributors';
+import PlaceOrder        from './pages/Pharmacy/PlaceOrder';
+import MyOrders          from './pages/Pharmacy/MyOrders';
+import PharmacyInvoices  from './pages/Pharmacy/Invoices';
+import FindDistributors  from './pages/Pharmacy/FindDistributors';
+import Cart              from './pages/Pharmacy/Cart';
 
-// Admin Pages
+// Admin pages
 import AdminDashboard from './pages/Admin/Dashboard';
 
+// Shared
+import Profile from './pages/Shared/Profile';
+
 // Context
-import AuthContext from './context/AuthContext';
-import { AuthProvider } from './context/AuthContext';
+import AuthContext, { AuthProvider } from './context/AuthContext';
+
+// Google OAuth callback handler component
+function GoogleOAuthCallback() {
+  const { loginWithGoogleToken } = React.useContext(AuthContext);
+  const [searchParams] = useSearchParams();
+  const navigate = React.useCallback((path) => window.location.replace(path), []);
+
+  React.useEffect(() => {
+    const token = searchParams.get('token');
+    const role  = searchParams.get('role');
+    if (token) {
+      loginWithGoogleToken(token, role);
+      const routes = { admin:'/admin/dashboard', distributor:'/distributor/dashboard', pharmacy:'/pharmacy/dashboard', employee:'/employee/dashboard' };
+      setTimeout(() => window.location.replace(routes[role] || '/login'), 300);
+    } else {
+      window.location.replace('/login?error=google_failed');
+    }
+  }, [searchParams, loginWithGoogleToken]);
+
+  return (
+    <div className="loading-screen">
+      <div className="spinner" style={{ width:32, height:32 }}/>
+      <p>Completing Google sign-in…</p>
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, loading } = React.useContext(AuthContext);
 
-  if (loading) {
-    return <div className="loading-screen">Loading...</div>;
-  }
+  if (loading) return <div className="loading-screen">Loading…</div>;
 
   return (
     <Routes>
+      {/* Public routes (always accessible) */}
+      <Route path="/about"           element={<About />} />
+      <Route path="/verify-email"    element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/google/callback" element={<GoogleOAuthCallback />} />
+
       {!user ? (
         <>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="*"         element={<Navigate to="/login" />} />
         </>
       ) : (
         <>
-          {/* Admin Routes */}
+          {/* Admin */}
           {user.role === 'admin' && (
             <>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="*" element={<Navigate to="/admin/dashboard" />} />
+              <Route path="/profile"         element={<Profile />} />
+              <Route path="*"                element={<Navigate to="/admin/dashboard" />} />
             </>
           )}
 
-          {/* Distributor Routes */}
+          {/* Distributor */}
           {user.role === 'distributor' && (
             <>
               <Route path="/distributor/dashboard" element={<DistributorDashboard />} />
-              <Route path="/distributor/stock" element={<StockManagement />} />
-              <Route path="/distributor/orders" element={<OrderManagement />} />
+              <Route path="/distributor/stock"     element={<StockManagement />} />
+              <Route path="/distributor/orders"    element={<OrderManagement />} />
               <Route path="/distributor/employees" element={<EmployeeManagement />} />
-              <Route path="/distributor/invoices" element={<DistributorInvoices />} />
-              <Route path="*" element={<Navigate to="/distributor/dashboard" />} />
+              <Route path="/distributor/invoices"  element={<DistributorInvoices />} />
+              <Route path="/profile"               element={<Profile />} />
+              <Route path="*"                      element={<Navigate to="/distributor/dashboard" />} />
             </>
           )}
 
-          {/* Pharmacy Routes */}
+          {/* Pharmacy */}
           {user.role === 'pharmacy' && (
             <>
-              <Route path="/pharmacy/dashboard" element={<PharmacyDashboard />} />
-              <Route path="/pharmacy/place-order" element={<PlaceOrder />} />
-              <Route path="/pharmacy/my-orders" element={<MyOrders />} />
-              <Route path="/pharmacy/invoices" element={<PharmacyInvoices />} />
+              <Route path="/pharmacy/dashboard"    element={<PharmacyDashboard />} />
+              <Route path="/pharmacy/place-order"  element={<PlaceOrder />} />
+              <Route path="/pharmacy/cart"         element={<Cart />} />
+              <Route path="/pharmacy/my-orders"    element={<MyOrders />} />
+              <Route path="/pharmacy/invoices"     element={<PharmacyInvoices />} />
               <Route path="/pharmacy/distributors" element={<FindDistributors />} />
-              <Route path="*" element={<Navigate to="/pharmacy/dashboard" />} />
+              <Route path="/profile"               element={<Profile />} />
+              <Route path="*"                      element={<Navigate to="/pharmacy/dashboard" />} />
             </>
           )}
 
-          {/* Employee Routes (Limited) */}
+          {/* Employee */}
           {user.role === 'employee' && (
             <>
-              <Route path="/employee/tasks" element={<EmployeeManagement />} />
-              <Route path="*" element={<Navigate to="/employee/tasks" />} />
+              <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+              <Route path="/profile"            element={<Profile />} />
+              <Route path="*"                   element={<Navigate to="/employee/dashboard" />} />
             </>
           )}
         </>

@@ -1,215 +1,150 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import axios from '../../config/api.config';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
-import '../../styles/Dashboard.css';
+import { PharmacyNavItems } from '../../config/navItems';
+import { FiBox, FiClock, FiDollarSign, FiSearch, FiFileText } from 'react-icons/fi';
+import { MdLocalShipping, MdOutlineShoppingCart } from 'react-icons/md';
 
 const PharmacyDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const [dashboardData] = useState({
-    totalOrders: 45,
-    pendingOrders: 3,
-    totalSpent: 125450,
-    activeDistributors: 8,
-    recentOrders: [
-      {
-        id: 'ORD-2024-001',
-        distributor: 'Prime Distributor',
-        amount: 4500,
-        status: 'delivered',
-        date: '2024-03-24'
-      },
-      {
-        id: 'ORD-2024-002',
-        distributor: 'Health Supplies Co',
-        amount: 3200,
-        status: 'dispatched',
-        date: '2024-03-23'
-      },
-      {
-        id: 'ORD-2024-003',
-        distributor: 'MediPro Dist',
-        amount: 5600,
-        status: 'approved',
-        date: '2024-03-22'
-      },
-    ],
-    lowInventory: [
-      { name: 'Aspirin', current: 20, reorderLevel: 50 },
-      { name: 'Paracetamol', current: 15, reorderLevel: 50 },
-      { name: 'Antibiotics', current: 10, reorderLevel: 30 },
-    ]
+  const [dashboardData, setDashboardData] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalSpent: 0,
+    activeDistributors: 0,
+    recentOrders: [],
+    lowInventory: []
   });
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [ordersRes, distRes] = await Promise.all([
+          axios.get('/api/v1/orders').catch(() => ({ data: { orders: [] } })),
+          axios.get('/api/v1/distributors').catch(() => ({ data: [] }))
+        ]);
+
+        const orders = ordersRes.data?.orders || [];
+        const distributors = distRes.data || [];
+
+        const totalSpent = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        const pending = orders.filter(o => o.status === 'pending').length;
+
+        setDashboardData({
+          totalOrders: orders.length,
+          pendingOrders: pending,
+          totalSpent: totalSpent,
+          activeDistributors: distributors.length,
+          recentOrders: orders.slice().reverse().slice(0, 5).map(o => ({
+            id: o._id.substring(0,8),
+            distributor: o.distributorId?.companyName || 'Unknown',
+            amount: o.totalAmount,
+            status: o.status,
+            date: new Date(o.createdAt).toLocaleDateString()
+          })),
+          lowInventory: []
+        });
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const statCards = [
-    {
-      title: 'Total Orders',
-      value: dashboardData.totalOrders,
-      icon: '📦',
-      color: 'blue',
-      link: '/pharmacy/my-orders'
-    },
-    {
-      title: 'Pending Orders',
-      value: dashboardData.pendingOrders,
-      icon: '⏳',
-      color: 'orange',
-      link: '/pharmacy/my-orders'
-    },
-    {
-      title: 'Total Spent',
-      value: `Rs. ${dashboardData.totalSpent.toLocaleString()}`,
-      icon: '💰',
-      color: 'green',
-      link: '/pharmacy/invoices'
-    },
-    {
-      title: 'Active Distributors',
-      value: dashboardData.activeDistributors,
-      icon: '🏢',
-      color: 'purple',
-      link: '/pharmacy/distributors'
-    },
+    { title: 'Total Orders', value: dashboardData.totalOrders, icon: <FiBox />, color: 'blue', link: '/pharmacy/my-orders' },
+    { title: 'Pending Orders', value: dashboardData.pendingOrders, icon: <FiClock />, color: 'amber', link: '/pharmacy/my-orders' },
+    { title: 'Total Spent', value: `Rs. ${dashboardData.totalSpent.toLocaleString()}`, icon: <FiDollarSign />, color: 'green', link: '/pharmacy/invoices' },
+    { title: 'Active Distributors', value: dashboardData.activeDistributors, icon: <MdLocalShipping />, color: 'info', link: '/pharmacy/distributors' },
   ];
 
   return (
-    <div className="dashboard-container">
-      <SidebarNav userRole="pharmacy" onLogout={handleLogout} />
+    <div className="app-layout">
+      <SidebarNav role="pharmacy" navItems={PharmacyNavItems} />
 
-      <div className="dashboard-content">
-        <TopBar userName={user?.username} userRole="Pharmacy" />
+      <div className="main-content">
+        <TopBar title="Pharmacy Dashboard" />
 
-        <div className="dashboard-main">
-          <div className="dashboard-header">
-            <h1>Pharmacy Dashboard</h1>
-            <p className="subtitle">Welcome back, {user?.username}!</p>
+        <div className="page-content animate-fade">
+          <div className="page-header">
+            <h1>Welcome back, {user?.username || 'Pharmacy'}!</h1>
+            <p style={{ color: 'var(--gray-500)' }}>Here's an overview of your pharmacy's activities.</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="stats-grid">
+          <div className="grid-4" style={{ marginBottom: 32 }}>
             {statCards.map((card, idx) => (
-              <div
-                key={idx}
-                className={`stat-card stat-${card.color}`}
-                onClick={() => navigate(card.link)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="stat-icon">{card.icon}</div>
-                <div className="stat-content">
-                  <p className="stat-title">{card.title}</p>
-                  <p className="stat-value">{card.value}</p>
+              <div key={idx} className="stat-card" onClick={() => navigate(card.link)} style={{ cursor: 'pointer' }}>
+                <div className={`stat-icon ${card.color}`}>{card.icon}</div>
+                <div>
+                  <div className="stat-value">{card.value}</div>
+                  <div className="stat-label">{card.title}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Content Grid */}
-          <div className="dashboard-grid">
-            {/* Recent Orders */}
-            <div className="dashboard-card">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+            {/* Recent Orders Table */}
+            <div className="card">
               <div className="card-header">
-                <h2>Recent Orders</h2>
-                <button
-                  className="btn-text"
-                  onClick={() => navigate('/pharmacy/my-orders')}
-                >
-                  View All →
-                </button>
+                <span className="card-title">Recent Orders</span>
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate('/pharmacy/my-orders')}>View All</button>
               </div>
-              <div className="orders-list">
-                {dashboardData.recentOrders.map((order) => (
-                  <div key={order.id} className="order-item">
-                    <div className="order-left">
-                      <p className="order-id">{order.id}</p>
-                      <p className="order-distributor">{order.distributor}</p>
-                    </div>
-                    <div className="order-middle">
-                      <p className="order-amount">Rs. {order.amount}</p>
-                      <p className="order-date">{order.date}</p>
-                    </div>
-                    <div className="order-right">
-                      <span className={`status-badge status-${order.status}`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="card-body" style={{ padding: 0 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Distributor</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardData.recentOrders.length === 0 ? (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: 32 }}>No recent orders.</td></tr>
+                    ) : (
+                      dashboardData.recentOrders.map((order, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 600, color: 'var(--brand)' }}>ORD-{order.id.toUpperCase()}</td>
+                          <td>{order.distributor}</td>
+                          <td style={{ fontWeight: 600 }}>Rs. {order.amount.toLocaleString()}</td>
+                          <td>
+                            <span className={`badge badge-${order.status === 'pending' ? 'amber' : order.status === 'completed' ? 'green' : 'blue'}`}>
+                              {order.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '13px', color: 'var(--gray-500)' }}>{order.date}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Low Inventory Alert */}
-            <div className="dashboard-card">
+            {/* Quick Actions Card */}
+            <div className="card">
               <div className="card-header">
-                <h2>Low Inventory Items</h2>
-                <button
-                  className="btn-text"
-                  onClick={() => navigate('/pharmacy/place-order')}
-                >
-                  Order Now →
+                <span className="card-title">Quick Actions</span>
+              </div>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button className="btn btn-primary btn-full" onClick={() => navigate('/pharmacy/place-order')}>
+                  <MdOutlineShoppingCart /> Place New Order
+                </button>
+                <button className="btn btn-secondary btn-full" onClick={() => navigate('/pharmacy/distributors')}>
+                  <FiSearch /> Find Distributors
+                </button>
+                <button className="btn btn-secondary btn-full" onClick={() => navigate('/pharmacy/invoices')}>
+                  <FiFileText /> My Invoices
                 </button>
               </div>
-              <div className="inventory-list">
-                {dashboardData.lowInventory.map((item, idx) => (
-                  <div key={idx} className="inventory-item">
-                    <div className="item-info">
-                      <p className="item-name">{item.name}</p>
-                      <p className="item-level">Reorder Level: {item.reorderLevel}</p>
-                    </div>
-                    <div className="item-stock">
-                      <div className="progress-bar">
-                        <div
-                          className="progress-fill warning"
-                          style={{
-                            width: `${(item.current / item.reorderLevel) * 100}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <p className="stock-text">{item.current} units</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>Quick Actions</h2>
-            </div>
-            <div className="quick-actions">
-              <button
-                className="action-btn primary"
-                onClick={() => navigate('/pharmacy/place-order')}
-              >
-                🛒 Place New Order
-              </button>
-              <button
-                className="action-btn secondary"
-                onClick={() => navigate('/pharmacy/distributors')}
-              >
-                🔍 Find Distributors
-              </button>
-              <button
-                className="action-btn secondary"
-                onClick={() => navigate('/pharmacy/my-orders')}
-              >
-                📋 View Orders
-              </button>
-              <button
-                className="action-btn secondary"
-                onClick={() => navigate('/pharmacy/invoices')}
-              >
-                📄 View Invoices
-              </button>
             </div>
           </div>
         </div>

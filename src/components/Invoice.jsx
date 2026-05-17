@@ -1,4 +1,6 @@
 import React from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import '../styles/Invoice.css';
 
 const Invoice = ({ order }) => {
@@ -6,128 +8,223 @@ const Invoice = ({ order }) => {
     window.print();
   };
 
-  const invoiceNumber = `INV-${Date.now()}`;
-  const invoiceDate = new Date().toLocaleDateString();
+  const handleDownloadPDF = () => {
+    const input = document.getElementById('invoice-to-print');
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Invoice_${order.displayId || order.id}.pdf`);
+    });
+  };
+
+  const invoiceNumber = order.invoiceNumber || `INV-${order.id?.substring(0, 8).toUpperCase() || 'NEW'}`;
+  // Format dates elegantly
+  const invoiceDate = order.createdAt 
+    ? (isNaN(Date.parse(order.createdAt)) ? order.createdAt : new Date(order.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))
+    : new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const dist = order.distributorId || {};
+  const pharm = order.pharmacyId || {};
 
   return (
     <div className="invoice-container">
-      <div className="invoice-content">
-        {/* Header */}
-        <div className="invoice-header">
-          <div className="company-info">
-            <h1>💊 MedDistro</h1>
-            <p>Pharmacy Distribution Management System</p>
+      <div className="invoice-content" id="invoice-to-print">
+        {/* Top Corporate Banner */}
+        <div className="invoice-header-corporate">
+          <div className="company-logo-block">
+            <span className="logo-pill">💊 Medistro</span>
+            <div className="logo-slogan">Secure Healthcare Logistics & Supply</div>
           </div>
-          <div className="invoice-title">
-            <h2>INVOICE</h2>
-          </div>
-        </div>
-
-        {/* Invoice Details */}
-        <div className="invoice-details-row">
-          <div className="invoice-detail">
-            <p className="label">Invoice Number:</p>
-            <p className="value">{invoiceNumber}</p>
-          </div>
-          <div className="invoice-detail">
-            <p className="label">Invoice Date:</p>
-            <p className="value">{invoiceDate}</p>
-          </div>
-          <div className="invoice-detail">
-            <p className="label">Order ID:</p>
-            <p className="value">{order.id}</p>
+          <div className="invoice-title-block">
+            <h1 className="title-text">TAX INVOICE</h1>
+            <div className="status-stamp stamp-paid">ORIGINAL RECEIPT</div>
           </div>
         </div>
 
-        {/* Bill To / From */}
-        <div className="invoice-parties">
-          <div className="party bill-from">
-            <h3>From</h3>
-            <p className="company-name">{order.distributorName || 'Prime Distributor'}</p>
-            <p>License: LIC-2021-001</p>
-            <p>Address: 100 Industrial Area, Okara</p>
-            <p>Phone: 03001111111</p>
+        {/* Invoice Metadata Dashboard */}
+        <div className="invoice-metadata-grid">
+          <div className="meta-box">
+            <span className="meta-label">Invoice Number</span>
+            <span className="meta-value value-highlight">{invoiceNumber}</span>
           </div>
-          <div className="party bill-to">
-            <h3>Bill To</h3>
-            <p className="company-name">Pharmacy Name</p>
-            <p>License: LIC-PHARM-001</p>
-            <p>Address: Okara, Punjab</p>
-            <p>Phone: 0300XXXXXXX</p>
+          <div className="meta-box">
+            <span className="meta-label">Billing Date</span>
+            <span className="meta-value">{invoiceDate}</span>
+          </div>
+          <div className="meta-box">
+            <span className="meta-label">Order Reference</span>
+            <span className="meta-value">{order.displayId || `ORD-${order.id?.substring(0,8).toUpperCase()}`}</span>
+          </div>
+          <div className="meta-box">
+            <span className="meta-label">Payment Terms</span>
+            <span className="meta-value">Direct Delivery</span>
           </div>
         </div>
 
-        {/* Items Table */}
-        <div className="invoice-items">
-          <table className="items-table">
+        {/* B2B Parties Grid */}
+        <div className="invoice-b2b-parties">
+          {/* Supplier Info */}
+          <div className="party-card supplier-card">
+            <div className="card-heading-pill">SUPPLIER (DISTRIBUTOR)</div>
+            <div className="card-body">
+              <h3 className="company-title">{dist.companyName || 'Medistro Partner Hub'}</h3>
+              
+              <div className="detail-row">
+                <span className="row-label">Drug License:</span>
+                <span className="row-value">{dist.licenseNumber || 'LIC-DL-88291'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">NTN / TAX ID:</span>
+                <span className="row-value">{dist.NTN || 'NTN-9023812-7'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">Contact:</span>
+                <span className="row-value">{dist.contactNumber || '+92 300 0000000'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">Address:</span>
+                <span className="row-value address-value">{dist.address || 'Central Pharmacy Logistics Depot, Pakistan'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Info */}
+          <div className="party-card customer-card">
+            <div className="card-heading-pill">BILLED TO (PHARMACY)</div>
+            <div className="card-body">
+              <h3 className="company-title">{pharm.pharmacyName || 'Registered Medistro Client'}</h3>
+              
+              <div className="detail-row">
+                <span className="row-label">Proprietor:</span>
+                <span className="row-value">{pharm.ownerName || 'Licensed Pharmacy Proprietor'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">Drug License:</span>
+                <span className="row-value">{pharm.licenseNumber || 'DL-PH-33491'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">Contact:</span>
+                <span className="row-value">{pharm.contactNumber || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="row-label">Ship Address:</span>
+                <span className="row-value address-value">{pharm.address || 'Registered Pharmacy Hub, Pakistan'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Medicines Ledger Grid */}
+        <div className="invoice-ledger-container">
+          <table className="ledger-table">
             <thead>
               <tr>
-                <th className="item-col">Item Description</th>
-                <th className="qty-col">Qty</th>
-                <th className="price-col">Unit Price</th>
-                <th className="total-col">Total</th>
+                <th className="col-index">S.No</th>
+                <th className="col-desc">Medicine Description</th>
+                <th className="col-batch">Batch ID</th>
+                <th className="col-qty text-center">Qty</th>
+                <th className="col-rate text-right">Unit Price</th>
+                <th className="col-total text-right">Total Amount</th>
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="item-col">
-                    <p className="item-name">{item.medicineName}</p>
-                    <p className="item-batch">Batch: {item.batchId}</p>
-                  </td>
-                  <td className="qty-col text-center">{item.quantity}</td>
-                  <td className="price-col text-right">Rs. {item.salePrice}</td>
-                  <td className="total-col text-right">Rs. {item.subtotal.toLocaleString()}</td>
+              {order.items && order.items.length > 0 ? (
+                order.items.map((item, idx) => {
+                  const batchCode = item.batchId 
+                    ? `BCH-${item.batchId.toString().substring(16, 24).toUpperCase()}` 
+                    : `BCH-${order.id?.substring(0,6).toUpperCase() || 'TEMP'}`;
+                  
+                  return (
+                    <tr key={idx}>
+                      <td className="col-index">{idx + 1}</td>
+                      <td className="col-desc">
+                        <span className="ledger-item-name">{item.medicineName || item.medicineId?.name}</span>
+                        {item.medicineId?.genericName && (
+                          <span className="ledger-item-sub">({item.medicineId.genericName})</span>
+                        )}
+                      </td>
+                      <td className="col-batch">
+                        <span className="batch-badge">{batchCode}</span>
+                      </td>
+                      <td className="col-qty text-center bold">{item.quantity}</td>
+                      <td className="col-rate text-right">Rs. {parseFloat(item.salePrice || 0).toLocaleString()}</td>
+                      <td className="col-total text-right bold text-highlight">Rs. {parseFloat(item.subtotal || 0).toLocaleString()}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center" style={{ padding: '24px 0' }}>No items listed on this invoice</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Summary */}
-        <div className="invoice-summary">
-          <div className="summary-item">
-            <span>Subtotal</span>
-            <span>Rs. {order.totalAmount.toLocaleString()}</span>
+        {/* Invoice Cost Breakdown Panel */}
+        <div className="invoice-breakdown-panel">
+          <div className="payment-notes">
+            <h4>Commercial Terms & Declarations</h4>
+            <ul>
+              <li>This is an electronically generated Tax Invoice and does not require physical seals.</li>
+              <li>Stock and expiry dates have been verified under standard distributor quality assurance protocols.</li>
+              <li>Warranty: All medicines are guaranteed authentic and stored in controlled temperature hubs.</li>
+            </ul>
           </div>
-          <div className="summary-item">
-            <span>Tax (0%)</span>
-            <span>Rs. 0</span>
-          </div>
-          <div className="summary-item">
-            <span>Discount</span>
-            <span>Rs. 0</span>
-          </div>
-          <div className="summary-total">
-            <span>Total Amount Due</span>
-            <span>Rs. {order.totalAmount.toLocaleString()}</span>
+
+          <div className="calculation-ledger">
+            <div className="calc-row">
+              <span className="calc-label">Subtotal Gross:</span>
+              <span className="calc-value">Rs. {parseFloat(order.totalAmount || 0).toLocaleString()}</span>
+            </div>
+            <div className="calc-row">
+              <span className="calc-label">Discounts / Allowances:</span>
+              <span className="calc-value">Rs. 0</span>
+            </div>
+            <div className="calc-row">
+              <span className="calc-label">GST / Sales Tax (0%):</span>
+              <span className="calc-value">Rs. 0</span>
+            </div>
+            <div className="calc-row-total">
+              <span className="calc-label-total">Total Net Payable:</span>
+              <span className="calc-value-total">Rs. {parseFloat(order.totalAmount || 0).toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
-        {/* Payment Terms */}
-        <div className="invoice-terms">
-          <h4>Payment Terms</h4>
-          <ul>
-            <li>Payment due within 30 days of invoice</li>
-            <li>Please reference invoice number with payment</li>
-            <li>Thank you for your business!</li>
-          </ul>
+        {/* B2B Signoff Stamps Area */}
+        <div className="invoice-signoff-stamps">
+          <div className="sign-block block-receiver">
+            <div className="sign-line" />
+            <span className="sign-title">Received By (Pharmacy Stamp & Signature)</span>
+            <span className="sign-date">Date: ____/____/________</span>
+          </div>
+          <div className="sign-block block-issuer">
+            <div className="stamp-box">MEDISTRO LOGISTICS HUB</div>
+            <div className="sign-line" />
+            <span className="sign-title">Authorized Signature (Medistro Logistics)</span>
+            <span className="sign-date">System Verified</span>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="invoice-footer">
-          <p>This is an electronically generated invoice. Valid without signature.</p>
-          <p>MedDistro &copy; 2024 | www.medistro.com</p>
+        {/* Small Bottom Legals */}
+        <div className="invoice-bottom-credits">
+          <p>Thank you for your valuable business partnership with Medistro Pharmacy Distribution Network.</p>
+          <p>Secure Care | Seamless Supply | MedDistro Technologies Ltd.</p>
         </div>
       </div>
 
-      {/* Print Button */}
+      {/* Control Buttons */}
       <div className="invoice-actions">
-        <button className="btn-print" onClick={handlePrint}>
+        <button className="btn btn-primary btn-lg" onClick={handlePrint}>
           🖨️ Print Invoice
         </button>
-        <button className="btn-download">
-          💾 Download PDF
+        <button className="btn btn-secondary btn-lg" onClick={handleDownloadPDF}>
+          💾 Download PDF Copy
         </button>
       </div>
     </div>

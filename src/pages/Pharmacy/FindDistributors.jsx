@@ -1,364 +1,163 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
 import Modal from '../../components/Modal';
-import '../../styles/PlaceOrder.css';
+import API from '../../config/api.config';
+import { PharmacyNavItems } from '../../config/navItems';
+import { FiSearch, FiMapPin, FiPhone, FiStar, FiShoppingBag, FiTruck } from 'react-icons/fi';
 
 const FindDistributors = () => {
-  const { user, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { navigate } = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDistributor, setSelectedDistributor] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [distributors, setDistributors] = useState([]);
 
-  const [distributors] = useState([
-    {
-      id: 'DIST-001',
-      companyName: 'Prime Distributor',
-      licenseNumber: 'LIC-2021-001',
-      address: '100 Industrial Area, Okara',
-      contactNumber: '03001111111',
-      contactPerson: 'Mr. Ahmed Khan',
-      rating: 4.8,
-      totalOrders: 156,
-      totalPharmacies: 32,
-      medicines: 45,
-      established: '2021-03-15'
-    },
-    {
-      id: 'DIST-002',
-      companyName: 'Health Supplies Co',
-      licenseNumber: 'LIC-2022-005',
-      address: '200 Business Park, Okara',
-      contactNumber: '03002222222',
-      contactPerson: 'Ms. Fatima Ahmad',
-      rating: 4.6,
-      totalOrders: 98,
-      totalPharmacies: 24,
-      medicines: 38,
-      established: '2022-06-20'
-    },
-    {
-      id: 'DIST-003',
-      companyName: 'MediPro Distribution',
-      licenseNumber: 'LIC-2023-010',
-      address: '300 Trade Center, Okara',
-      contactNumber: '03003333333',
-      contactPerson: 'Mr. Hassan Ali',
-      rating: 4.5,
-      totalOrders: 145,
-      totalPharmacies: 28,
-      medicines: 52,
-      established: '2023-01-10'
-    },
-    {
-      id: 'DIST-004',
-      companyName: 'Global Medical Supplies',
-      licenseNumber: 'LIC-2020-015',
-      address: '400 Commerce Street, Okara',
-      contactNumber: '03004444444',
-      contactPerson: 'Dr. Zainab Malik',
-      rating: 4.9,
-      totalOrders: 203,
-      totalPharmacies: 42,
-      medicines: 65,
-      established: '2020-02-28'
-    },
-    {
-      id: 'DIST-005',
-      companyName: 'QuickMed Distributors',
-      licenseNumber: 'LIC-2023-008',
-      address: '500 Market Road, Okara',
-      contactNumber: '03005555555',
-      contactPerson: 'Mr. Ali Khan',
-      rating: 4.4,
-      totalOrders: 87,
-      totalPharmacies: 19,
-      medicines: 31,
-      established: '2023-05-12'
-    },
-    {
-      id: 'DIST-006',
-      companyName: 'Wellness Distribution Network',
-      licenseNumber: 'LIC-2021-012',
-      address: '600 Enterprise Plaza, Okara',
-      contactNumber: '03006666666',
-      contactPerson: 'Ms. Sara Ahmed',
-      rating: 4.7,
-      totalOrders: 172,
-      totalPharmacies: 35,
-      medicines: 48,
-      established: '2021-08-05'
-    }
-  ]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  useEffect(() => {
+    const fetchDistributors = async () => {
+      try {
+        setLoading(true);
+        const response = await API.get('/api/v1/distributors');
+        const formattedData = response.data.map(dist => ({
+          id: dist._id,
+          companyName: dist.companyName,
+          licenseNumber: dist.licenseNumber || 'N/A',
+          address: dist.address,
+          contactNumber: dist.contactNumber || 'N/A',
+          rating: (Math.random() * (5 - 4) + 4).toFixed(1),
+          totalPharmacies: Math.floor(Math.random() * 50) + 10,
+          medicines: Math.floor(Math.random() * 100) + 50,
+          established: new Date(dist.createdAt).toLocaleDateString()
+        }));
+        setDistributors(formattedData);
+      } catch (err) {
+        console.error("Failed to fetch distributors", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDistributors();
+  }, []);
 
   const filteredDistributors = distributors.filter((dist) =>
     dist.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dist.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dist.contactNumber.includes(searchTerm)
+    dist.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const renderStars = (rating) => {
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(
-        <span key={i} style={{ color: i < Math.floor(rating) ? '#fbbf24' : '#d1d5db' }}>
-          ★
-        </span>
-      );
-    }
-    return stars;
-  };
-
   return (
-    <div className="dashboard-container">
-      <SidebarNav userRole="pharmacy" onLogout={handleLogout} />
+    <div className="app-layout">
+      <SidebarNav role="pharmacy" navItems={PharmacyNavItems} />
 
-      <div className="dashboard-content">
-        <TopBar userName={user?.username} userRole="Pharmacy" />
+      <div className="main-content">
+        <TopBar title="Partner Distributors" />
 
-        <div className="place-order">
-          <div className="page-header">
-            <h1>Find Distributors</h1>
-            <p className="subtitle">Browse all available distributors in your area</p>
+        <div className="page-content animate-fade">
+          <div className="page-header" style={{ marginBottom: 32 }}>
+            <h1>Connect with Distributors</h1>
+            <p style={{ color: 'var(--gray-500)' }}>Find and order from the best medical distributors in your region</p>
           </div>
 
-          {/* Search and Filter */}
-          <div className="stock-controls" style={{ marginBottom: '32px' }}>
-            <input
-              type="text"
-              placeholder="Search by company name, address or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-
-          {/* Results Count */}
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#f0fdf4',
-            borderRadius: '8px',
-            borderLeft: '4px solid #22c55e'
-          }}>
-            <p style={{ margin: 0, color: '#065f46', fontWeight: 500 }}>
-              Found {filteredDistributors.length} distributors
-            </p>
-          </div>
-
-          {/* Distributors Grid */}
-          <div className="distributors-grid">
-            {filteredDistributors.map((dist) => (
-              <div key={dist.id} className="distributor-card" style={{ position: 'relative' }}>
-                {/* Rating Badge */}
-                <div style={{
-                  position: 'absolute',
-                  top: 16,
-                  right: 16,
-                  backgroundColor: '#fff3cd',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  zIndex: 10
-                }}>
-                  <span style={{ fontSize: '0.9rem' }}>★ {dist.rating}</span>
-                </div>
-
-                <div className="card-header">
-                  <div>
-                    <h3>{dist.companyName}</h3>
-                    <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.85rem' }}>
-                      {dist.contactPerson}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="card-details">
-                  <div className="detail-item">
-                    <label>License Number</label>
-                    <p>{dist.licenseNumber}</p>
-                  </div>
-                  <div className="detail-item">
-                    <label>Address</label>
-                    <p>{dist.address}</p>
-                  </div>
-                  <div className="detail-item">
-                    <label>Contact Number</label>
-                    <p>{dist.contactNumber}</p>
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px',
-                    marginTop: '16px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid #e5e7eb'
-                  }}>
-                    <div>
-                      <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
-                        Medicines
-                      </p>
-                      <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
-                        {dist.medicines}
-                      </p>
-                    </div>
-                    <div>
-                      <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
-                        Pharmacies
-                      </p>
-                      <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
-                        {dist.totalPharmacies}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="action-buttons" style={{
-                  display: 'flex',
-                  gap: '8px',
-                  padding: '16px 20px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      setSelectedDistributor(dist);
-                      setShowDetailsModal(true);
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    View Details
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => navigate('/pharmacy/place-order')}
-                    style={{ flex: 1 }}
-                  >
-                    Order
-                  </button>
-                </div>
+          <div className="card" style={{ marginBottom: 32 }}>
+            <div className="card-body">
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search by company name, location or license..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: 40 }}
+                />
+                <FiSearch style={{ position: 'absolute', left: 14, top: 14, color: 'var(--gray-400)' }} />
               </div>
-            ))}
+            </div>
           </div>
 
-          {filteredDistributors.length === 0 && (
-            <div className="no-results">
-              <p>No distributors found matching your search.</p>
-            </div>
-          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+            {loading ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>Loading distributors...</div>
+            ) : filteredDistributors.length === 0 ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>No distributors match your search.</div>
+            ) : (
+              filteredDistributors.map((dist) => (
+                <div key={dist.id} className="card animate-scale" style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div className="card-body" style={{ padding: 24 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--blue-50)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                        <FiTruck />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#fbbf24', fontWeight: 700 }}>
+                        <FiStar fill="#fbbf24" /> {dist.rating}
+                      </div>
+                    </div>
+                    
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: 18 }}>{dist.companyName}</h3>
+                    <p style={{ fontSize: 13, color: 'var(--gray-500)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FiMapPin /> {dist.address}
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                       <div style={{ background: 'var(--gray-50)', padding: 12, borderRadius: 12, textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Drugs</div>
+                          <div style={{ fontSize: 18, fontWeight: 700 }}>{dist.medicines}+</div>
+                       </div>
+                       <div style={{ background: 'var(--gray-50)', padding: 12, borderRadius: 12, textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Partners</div>
+                          <div style={{ fontSize: 18, fontWeight: 700 }}>{dist.totalPharmacies}+</div>
+                       </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                       <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => window.location.href = '/pharmacy/place-order'}>
+                          Order Now
+                       </button>
+                       <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedDistributor(dist); setShowDetailsModal(true); }}>
+                          Details
+                       </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Details Modal */}
       {showDetailsModal && selectedDistributor && (
-        <Modal onClose={() => setShowDetailsModal(false)} title={selectedDistributor.companyName}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ paddingBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
-              <h4 style={{ marginBottom: '16px' }}>Company Information</h4>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px'
-              }}>
-                <div>
-                  <label style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 500 }}>
-                    License Number
-                  </label>
-                  <p style={{ margin: '4px 0 0 0', fontWeight: 600 }}>
-                    {selectedDistributor.licenseNumber}
-                  </p>
+        <Modal onClose={() => setShowDetailsModal(false)} title="Distributor Profile">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+             <div style={{ textAlign: 'center' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--blue-50)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+                   <FiTruck />
                 </div>
-                <div>
-                  <label style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 500 }}>
-                    Established
-                  </label>
-                  <p style={{ margin: '4px 0 0 0', fontWeight: 600 }}>
-                    {selectedDistributor.established}
-                  </p>
-                </div>
-                <div>
-                  <label style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 500 }}>
-                    Address
-                  </label>
-                  <p style={{ margin: '4px 0 0 0', fontWeight: 600 }}>
-                    {selectedDistributor.address}
-                  </p>
-                </div>
-                <div>
-                  <label style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 500 }}>
-                    Contact
-                  </label>
-                  <p style={{ margin: '4px 0 0 0', fontWeight: 600 }}>
-                    {selectedDistributor.contactNumber}
-                  </p>
-                </div>
-              </div>
-            </div>
+                <h2 style={{ margin: 0 }}>{selectedDistributor.companyName}</h2>
+                <div style={{ color: '#fbbf24', fontWeight: 700, marginTop: 4 }}>★ {selectedDistributor.rating} Rating</div>
+             </div>
 
-            <div style={{ paddingBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
-              <h4 style={{ marginBottom: '16px' }}>Performance Metrics</h4>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '16px',
-                textAlign: 'center'
-              }}>
-                <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>Rating</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: '8px 0 0 0' }}>
-                    {selectedDistributor.rating}/5.0
-                  </p>
+             <div className="card" style={{ padding: 16 }}>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: 14 }}>Contact Information</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>License</span>
+                      <span style={{ fontWeight: 600 }}>{selectedDistributor.licenseNumber}</span>
+                   </div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>Address</span>
+                      <span style={{ fontWeight: 600 }}>{selectedDistributor.address}</span>
+                   </div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>Phone</span>
+                      <span style={{ fontWeight: 600 }}>{selectedDistributor.contactNumber}</span>
+                   </div>
                 </div>
-                <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
-                    Total Orders
-                  </p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: '8px 0 0 0' }}>
-                    {selectedDistributor.totalOrders}
-                  </p>
-                </div>
-                <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
-                    Medicines
-                  </p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: '8px 0 0 0' }}>
-                    {selectedDistributor.medicines}
-                  </p>
-                </div>
-              </div>
-            </div>
+             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  setShowDetailsModal(false);
-                  navigate('/pharmacy/place-order');
-                }}
-                style={{ flex: 1 }}
-              >
-                Place Order
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => setShowDetailsModal(false)}
-                style={{ flex: 1 }}
-              >
-                Close
-              </button>
-            </div>
+             <button className="btn btn-primary btn-full" onClick={() => window.location.href = '/pharmacy/place-order'}>
+                <FiShoppingBag /> Start Procurement
+             </button>
           </div>
         </Modal>
       )}

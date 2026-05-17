@@ -1,0 +1,105 @@
+.public-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  border-bottom: 1px solid rgba(21, 101, 192, 0.08);
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.public-topbar-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.public-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #1565C0;
+  transition: transform 0.2s ease;
+}
+
+.public-topbar-brand:hover {
+  transform: scale(1.02);
+}
+
+.public-topbar-logo {
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1565C0;
+}
+
+.public-topbar-name {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #0D47A1, #1976D2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.public-topbar-links {
+  display: flex;
+  gap: 32px;
+}
+
+.public-topbar-link {
+  text-decoration: none;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.public-topbar-link:hover {
+  color: #1565C0;
+}
+
+.public-topbar-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #1565C0;
+  transition: width 0.3s ease;
+}
+
+.public-topbar-link:hover::after {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .public-topbar-container {
+    padding: 0 24px;
+  }
+  
+  .public-topbar-logo {
+    font-size: 28px;
+  }
+  
+  .public-topbar-name {
+    font-size: 20px;
+  }
+  
+  .public-topbar-link {
+    font-size: 14px;
+  }
+}

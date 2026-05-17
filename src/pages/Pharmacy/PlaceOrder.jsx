@@ -1,87 +1,129 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import axios from '../../config/api.config';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
 import Modal from '../../components/Modal';
+import { PharmacyNavItems } from '../../config/navItems';
 import '../../styles/PlaceOrder.css';
 
 const PlaceOrder = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [distributors, setDistributors] = useState([]);
   const [selectedDistributor, setSelectedDistributor] = useState(null);
+  
+  const [catalog, setCatalog] = useState([]); // from inventory
   const [showMedicinesModal, setShowMedicinesModal] = useState(false);
   const [orderItems, setOrderItems] = useState([]);
   const [orderNote, setOrderNote] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Dummy distributors data
-  const [distributors] = useState([
-    {
-      id: 'DIST-001',
-      companyName: 'Prime Distributor',
-      licenseNumber: 'LIC-2021-001',
-      address: '100 Industrial Area, Okara',
-      contactNumber: '03001111111',
-      medicines: [
-        { id: 1, name: 'Aspirin', genericName: 'Acetylsalicylic Acid', company: 'Bayer', price: 25 },
-        { id: 2, name: 'Paracetamol', genericName: 'Acetaminophen', company: 'GSK', price: 25 },
-        { id: 3, name: 'Ibuprofen', genericName: 'Ibuprofen', company: 'Pfizer', price: 30 },
-      ]
-    },
-    {
-      id: 'DIST-002',
-      companyName: 'Health Supplies Co',
-      licenseNumber: 'LIC-2022-005',
-      address: '200 Business Park, Okara',
-      contactNumber: '03002222222',
-      medicines: [
-        { id: 4, name: 'Amoxicillin', genericName: 'Amoxicillin', company: 'AstraZeneca', price: 40 },
-        { id: 5, name: 'Metformin', genericName: 'Metformin HCl', company: 'Merck', price: 20 },
-        { id: 1, name: 'Aspirin', genericName: 'Acetylsalicylic Acid', company: 'Bayer', price: 25 },
-      ]
-    },
-    {
-      id: 'DIST-003',
-      companyName: 'MediPro Distribution',
-      licenseNumber: 'LIC-2023-010',
-      address: '300 Trade Center, Okara',
-      contactNumber: '03003333333',
-      medicines: [
-        { id: 6, name: 'Cetirizine', genericName: 'Cetirizine HCl', company: 'Abbott', price: 35 },
-        { id: 7, name: 'Omeprazole', genericName: 'Omeprazole', company: 'Cipla', price: 45 },
-        { id: 2, name: 'Paracetamol', genericName: 'Acetaminophen', company: 'GSK', price: 25 },
-      ]
-    },
-  ]);
+  // Fetch Distributors on mount
+  useEffect(() => {
+    const fetchDistributors = async () => {
+      try {
+        const response = await axios.get('/api/v1/distributors');
+        // Deduplicate distributors by company name (case-insensitive) to prevent duplicate card grids
+        const uniqueDists = [];
+        const seenNames = new Set();
+        (response.data || []).forEach(dist => {
+          const uniqueKey = (dist.companyName || '').trim().toLowerCase();
+          if (uniqueKey && !seenNames.has(uniqueKey)) {
+            seenNames.add(uniqueKey);
+            uniqueDists.push(dist);
+          }
+        });
+        setDistributors(uniqueDists);
+      } catch (err) {
+        console.error('Failed to fetch distributors', err);
+      }
+    };
+    fetchDistributors();
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const handleSelectDistributor = (distributor) => {
+  const handleSelectDistributor = async (distributor) => {
     setSelectedDistributor(distributor);
-    setShowMedicinesModal(true);
+    
+    // Fetch this distributor's inventory
+    try {
+      const response = await axios.get(`/api/v1/inventory?distributorId=${distributor._id}`);
+      // The API returns { inventory: [...] }. Map it.
+      const mappedCatalog = response.data.inventory.map(inv => ({
+        inventoryId: inv._id,
+        medicineId: inv.medicineId?._id,
+        name: inv.medicineId?.name || 'Unknown',
+        genericName: inv.medicineId?.genericName || '',
+        company: inv.medicineId?.company || 'Unknown', // Fixed from manufacturer
+        price: inv.latestBatch?.salePrice || 0, // Read sale price from latest batch
+        batchId: inv.latestBatch?._id || null, // Preload batch ID directly from database
+        availableStock: inv.availableStock || 0
+      }));
+      setCatalog(mappedCatalog);
+      setShowMedicinesModal(true);
+    } catch (err) {
+      console.error('Failed to fetch inventory', err);
+      alert('Could not fetch inventory for this distributor. They may not have items.');
+    }
   };
 
-  const handleAddMedicine = (medicine) => {
-    const existingItem = orderItems.find(item => item.medicineId === medicine.id);
+  const handleAddMedicine = async (medicine) => {
+    // Check if we have preloaded batch details directly from inventory
+    let validBatchId = medicine.batchId;
+    let salePrice = medicine.price;
+    
+    // Fallback async fetch only if batchId was not pre-populated
+    if (!validBatchId) {
+      try {
+        const batchRes = await axios.get(`/api/v1/batches/medicine/${medicine.medicineId}?distributorId=${selectedDistributor._id}`);
+        if (batchRes.data.batches && batchRes.data.batches.length > 0) {
+          // take first active batch
+          const activeBatch = batchRes.data.batches.find(b => b.isActive);
+          if (activeBatch) {
+            validBatchId = activeBatch._id;
+            salePrice = activeBatch.salePrice || medicine.price;
+          } else {
+             validBatchId = batchRes.data.batches[0]._id; // fallback
+          }
+        } else {
+          alert("No active batches found for this medicine. Cannot add to cart.");
+          return;
+        }
+      } catch (err) {
+         console.error("Failed to fetch batches", err);
+         alert("Error checking medicine batches.");
+         return;
+      }
+    }
+
+    const existingItem = orderItems.find(item => item.medicineId === medicine.medicineId);
     
     if (existingItem) {
+      if (existingItem.quantity + 1 > medicine.availableStock) {
+        alert("Cannot exceed available stock!");
+        return;
+      }
       setOrderItems(orderItems.map(item =>
-        item.medicineId === medicine.id
+        item.medicineId === medicine.medicineId
           ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
           : item
       ));
     } else {
       setOrderItems([...orderItems, {
-        medicineId: medicine.id,
+        medicineId: medicine.medicineId,
         medicineName: medicine.name,
-        distributorId: selectedDistributor.id,
-        price: medicine.price,
+        batchId: validBatchId,
+        distributorId: selectedDistributor._id,
+        price: salePrice,
         quantity: 1,
-        subtotal: medicine.price
+        subtotal: salePrice,
+        maxStock: medicine.availableStock 
       }]);
     }
   };
@@ -91,13 +133,18 @@ const PlaceOrder = () => {
   };
 
   const handleUpdateQuantity = (medicineId, newQuantity) => {
+    const item = orderItems.find(i => i.medicineId === medicineId);
+    if (!item) return;
+
     if (newQuantity <= 0) {
       handleRemoveItem(medicineId);
+    } else if (newQuantity > item.maxStock) {
+      alert("Exceeds available stock: " + item.maxStock);
     } else {
-      setOrderItems(orderItems.map(item =>
-        item.medicineId === medicineId
-          ? { ...item, quantity: newQuantity, subtotal: newQuantity * item.price }
-          : item
+      setOrderItems(orderItems.map(i =>
+        i.medicineId === medicineId
+          ? { ...i, quantity: newQuantity, subtotal: newQuantity * i.price }
+          : i
       ));
     }
   };
@@ -110,39 +157,45 @@ const PlaceOrder = () => {
     setShowConfirm(true);
   };
 
-  const handleConfirmOrder = () => {
-    const order = {
-      id: `ORD-${Date.now()}`,
-      pharmacyId: user._id,
-      distributorId: selectedDistributor.id,
-      items: orderItems,
-      totalAmount: totalAmount,
-      status: 'pending',
-      note: orderNote,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+  const handleConfirmOrder = async () => {
+    try {
+      // payload matches { distributorId, items: [{medicineId, batchId, quantity}], note }
+      const payload = {
+        distributorId: selectedDistributor._id,
+        note: orderNote,
+        items: orderItems.map(curr => ({
+          medicineId: curr.medicineId,
+          batchId: curr.batchId,
+          quantity: curr.quantity
+        }))
+      };
 
-    console.log('Order placed:', order);
-    alert('Order placed successfully! Order ID: ' + order.id);
-    
-    // Reset form
-    setOrderItems([]);
-    setOrderNote('');
-    setSelectedDistributor(null);
-    setShowConfirm(false);
-    navigate('/pharmacy/my-orders');
+      const res = await axios.post('/api/v1/orders', payload);
+      alert('Order placed successfully! ' + res.data.message);
+      
+      setOrderItems([]);
+      setOrderNote('');
+      setSelectedDistributor(null);
+      setShowConfirm(false);
+      navigate('/pharmacy/my-orders');
+      
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Error occurred while placing order');
+      setShowConfirm(false);
+    }
   };
 
   const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
 
   return (
-    <div className="dashboard-container">
-      <SidebarNav userRole="pharmacy" onLogout={handleLogout} />
+    <div className="app-layout">
+      <SidebarNav role="pharmacy" navItems={PharmacyNavItems} />
 
-      <div className="dashboard-content">
-        <TopBar userName={user?.username} userRole="Pharmacy" />
+      <div className="main-content">
+        <TopBar title="Place Order" />
 
-        <div className="place-order">
+        <div className="place-order page-content animate-fade">
           <div className="page-header">
             <h1>Place New Order</h1>
             <p className="subtitle">Select a distributor and choose medicines</p>
@@ -157,12 +210,9 @@ const PlaceOrder = () => {
 
               <div className="distributors-grid">
                 {distributors.map((dist) => (
-                  <div key={dist.id} className="distributor-card">
+                  <div key={dist._id} className="distributor-card">
                     <div className="card-header">
                       <h3>{dist.companyName}</h3>
-                      <span className="medicine-count">
-                        {dist.medicines.length} medicines
-                      </span>
                     </div>
 
                     <div className="card-details">
@@ -180,12 +230,14 @@ const PlaceOrder = () => {
                       </div>
                     </div>
 
-                    <button
-                      className="btn-primary"
-                      onClick={() => handleSelectDistributor(dist)}
-                    >
-                      Select Distributor →
-                    </button>
+                    <div className="card-footer">
+                      <button
+                        className="btn btn-primary btn-full"
+                        onClick={() => handleSelectDistributor(dist)}
+                      >
+                        Select Distributor →
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -199,8 +251,11 @@ const PlaceOrder = () => {
                   <p>{selectedDistributor.address}</p>
                 </div>
                 <button
-                  className="btn-text"
-                  onClick={() => setSelectedDistributor(null)}
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setSelectedDistributor(null);
+                    setOrderItems([]);
+                  }}
                 >
                   Change Distributor
                 </button>
@@ -211,7 +266,7 @@ const PlaceOrder = () => {
                 <div className="section-header">
                   <h2>Step 2: Add Medicines</h2>
                   <button
-                    className="btn-secondary"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setShowMedicinesModal(true)}
                   >
                     ➕ Add Medicine
@@ -266,7 +321,7 @@ const PlaceOrder = () => {
                             <td className="bold">Rs. {item.subtotal.toLocaleString()}</td>
                             <td>
                               <button
-                                className="btn-danger btn-sm"
+                                className="btn btn-danger btn-sm"
                                 onClick={() => handleRemoveItem(item.medicineId)}
                               >
                                 🗑️
@@ -281,7 +336,7 @@ const PlaceOrder = () => {
                   <div className="empty-items">
                     <p>No medicines added yet</p>
                     <button
-                      className="btn-primary"
+                      className="btn btn-primary"
                       onClick={() => setShowMedicinesModal(true)}
                     >
                       Add Medicines
@@ -295,8 +350,9 @@ const PlaceOrder = () => {
                 <div className="order-section">
                   <h2>Step 3: Order Details</h2>
                   <div className="form-group">
-                    <label>Order Notes (Optional)</label>
+                    <label className="form-label">Order Notes (Optional)</label>
                     <textarea
+                      className="form-input"
                       value={orderNote}
                       onChange={(e) => setOrderNote(e.target.value)}
                       placeholder="Add any special instructions..."
@@ -322,13 +378,13 @@ const PlaceOrder = () => {
 
                   <div className="order-actions">
                     <button
-                      className="btn-primary btn-lg"
+                      className="btn btn-primary btn-lg"
                       onClick={handlePlaceOrder}
                     >
                       Place Order
                     </button>
                     <button
-                      className="btn-secondary btn-lg"
+                      className="btn btn-secondary btn-lg"
                       onClick={() => setOrderItems([])}
                     >
                       Clear Items
@@ -345,24 +401,27 @@ const PlaceOrder = () => {
       {showMedicinesModal && selectedDistributor && (
         <Modal
           onClose={() => setShowMedicinesModal(false)}
-          title="Select Medicines from Catalog"
+          title={`Catalog: ${selectedDistributor.companyName}`}
         >
           <div className="medicines-catalog">
-            {selectedDistributor.medicines.map((medicine) => (
-              <div key={medicine.id} className="medicine-catalog-item">
+            {catalog.length === 0 && <p>No inventory found for this distributor.</p>}
+            {catalog.map((medicine) => (
+              <div key={medicine.medicineId} className="medicine-catalog-item">
                 <div className="medicine-info">
                   <h4>{medicine.name}</h4>
                   <p className="generic">{medicine.genericName}</p>
                   <p className="company">{medicine.company}</p>
+                  <p className="stock">Available Stock: {medicine.availableStock}</p>
                 </div>
                 <div className="medicine-price">
                   <p className="price">Rs. {medicine.price}</p>
                 </div>
                 <button
-                  className="btn-primary"
+                  className="btn btn-primary btn-sm"
                   onClick={() => handleAddMedicine(medicine)}
+                  disabled={medicine.availableStock <= 0}
                 >
-                  Add
+                  {medicine.availableStock <= 0 ? 'Out of Stock' : 'Add'}
                 </button>
               </div>
             ))}
@@ -385,12 +444,12 @@ const PlaceOrder = () => {
                 <span className="amount">Rs. {totalAmount.toLocaleString()}</span>
               </div>
             </div>
-            <div className="modal-buttons">
-              <button className="btn-primary" onClick={handleConfirmOrder}>
+            <div className="modal-buttons" style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button className="btn btn-primary" onClick={handleConfirmOrder}>
                 ✓ Confirm Order
               </button>
               <button
-                className="btn-secondary"
+                className="btn btn-secondary"
                 onClick={() => setShowConfirm(false)}
               >
                 Cancel

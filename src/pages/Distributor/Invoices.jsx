@@ -1,98 +1,64 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
 import Modal from '../../components/Modal';
 import Invoice from '../../components/Invoice';
-import '../../styles/OrderManagement.css';
+import API from '../../config/api.config';
+import { DistributorNavItems } from '../../config/navItems';
+import { FiFileText, FiDollarSign, FiClock, FiCheckCircle } from 'react-icons/fi';
 
 const DistributorInvoices = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [invoices] = useState([
-    {
-      id: 'INV-2024-001',
-      orderId: 'ORD-2024-001',
-      pharmacyName: 'City Pharmacy',
-      amount: 4500,
-      paidAmount: 4500,
-      paymentStatus: 'paid',
-      dueDate: '2024-04-24',
-      createdDate: '2024-03-24',
-      totalAmount: 4500,
-      items: [
-        { medicineName: 'Aspirin', quantity: 100, salePrice: 25, subtotal: 2500, batchId: 'BATCH-001' },
-        { medicineName: 'Paracetamol', quantity: 80, salePrice: 25, subtotal: 2000, batchId: 'BATCH-002' }
-      ]
-    },
-    {
-      id: 'INV-2024-002',
-      orderId: 'ORD-2024-002',
-      pharmacyName: 'Health Plus',
-      amount: 3200,
-      paidAmount: 1600,
-      paymentStatus: 'partial',
-      dueDate: '2024-04-23',
-      createdDate: '2024-03-23',
-      totalAmount: 3200,
-      items: [
-        { medicineName: 'Ibuprofen', quantity: 128, salePrice: 25, subtotal: 3200, batchId: 'BATCH-003' }
-      ]
-    },
-    {
-      id: 'INV-2024-003',
-      orderId: 'ORD-2024-003',
-      pharmacyName: 'MediCare',
-      amount: 5600,
-      paidAmount: 0,
-      paymentStatus: 'unpaid',
-      dueDate: '2024-04-22',
-      createdDate: '2024-03-22',
-      totalAmount: 5600,
-      items: [
-        { medicineName: 'Amoxicillin', quantity: 224, salePrice: 25, subtotal: 5600, batchId: 'BATCH-004' }
-      ]
-    },
-    {
-      id: 'INV-2024-004',
-      orderId: 'ORD-2024-004',
-      pharmacyName: 'City Pharmacy',
-      amount: 2800,
-      paidAmount: 2800,
-      paymentStatus: 'paid',
-      dueDate: '2024-03-20',
-      createdDate: '2024-02-20',
-      totalAmount: 2800,
-      items: [
-        { medicineName: 'Metformin', quantity: 112, salePrice: 25, subtotal: 2800, batchId: 'BATCH-005' }
-      ]
-    },
-    {
-      id: 'INV-2024-005',
-      orderId: 'ORD-2024-005',
-      pharmacyName: 'Wellness Center',
-      amount: 3500,
-      paidAmount: 0,
-      paymentStatus: 'unpaid',
-      dueDate: '2024-04-25',
-      createdDate: '2024-03-25',
-      totalAmount: 3500,
-      items: [
-        { medicineName: 'Aspirin', quantity: 140, salePrice: 25, subtotal: 3500, batchId: 'BATCH-001' }
-      ]
-    },
-  ]);
+  const [invoices, setInvoices] = useState([]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        setLoading(true);
+        const response = await API.get('/api/v1/invoices');
+        const formattedData = response.data.map(inv => {
+          const orderRef = inv.orderId || {};
+          return {
+            id: inv.invoiceNumber,
+            displayId: orderRef._id?.substring(0, 8) || 'Unknown',
+            orderId: orderRef._id?.substring(0, 8) || 'Unknown',
+            pharmacyName: inv.pharmacyId?.pharmacyName || 'Unknown Pharmacy',
+            amount: inv.totalAmount,
+            paidAmount: inv.amountPaid || 0,
+            paymentStatus: inv.paymentStatus,
+            dueDate: new Date(inv.dueDate).toLocaleDateString(),
+            createdDate: new Date(inv.createdAt).toLocaleDateString(),
+            totalAmount: inv.totalAmount,
+            
+            // Reconstruct the nested structures expected by <Invoice />
+            invoiceNumber: inv.invoiceNumber,
+            createdAt: new Date(inv.createdAt).toLocaleDateString(),
+            distributorId: inv.distributorId || {},
+            pharmacyId: {
+              ...inv.pharmacyId,
+              licenseNumber: inv.pharmacyId?.drugLicenseNumber || 'N/A',
+            },
+            items: orderRef.items || [],
+          };
+        });
+        setInvoices(formattedData);
+      } catch (err) {
+        console.error("Failed to fetch invoices", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, []);
 
   const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
@@ -109,182 +75,113 @@ const DistributorInvoices = () => {
   const totalPending = totalAmount - totalPaid;
 
   const stats = [
-    { label: 'Total Invoices', value: invoices.length, color: 'blue' },
-    { label: 'Total Amount', value: `Rs. ${totalAmount.toLocaleString()}`, color: 'green' },
-    { label: 'Amount Received', value: `Rs. ${totalPaid.toLocaleString()}`, color: 'green' },
-    { label: 'Pending Payment', value: `Rs. ${totalPending.toLocaleString()}`, color: 'red' },
+    { label: 'Total Billed', value: `Rs. ${totalAmount.toLocaleString()}`, icon: <FiFileText />, color: 'blue' },
+    { label: 'Received', value: `Rs. ${totalPaid.toLocaleString()}`, icon: <FiCheckCircle />, color: 'green' },
+    { label: 'Pending', value: `Rs. ${totalPending.toLocaleString()}`, icon: <FiClock />, color: 'amber' },
   ];
 
-  const getStatusColor = (status) => {
-    const colors = {
-      unpaid: 'red',
-      partial: 'orange',
-      paid: 'green'
-    };
-    return colors[status] || 'gray';
-  };
-
   return (
-    <div className="dashboard-container">
-      <SidebarNav userRole="distributor" onLogout={handleLogout} />
+    <div className="app-layout">
+      <SidebarNav role="distributor" navItems={DistributorNavItems} />
 
-      <div className="dashboard-content">
-        <TopBar userName={user?.username} userRole="Distributor" />
+      <div className="main-content">
+        <TopBar title="Invoice Management" />
 
-        <div className="order-management">
-          <div className="page-header">
-            <h1>Invoices</h1>
-            <p className="subtitle">Manage customer invoices and payments</p>
+        <div className="page-content animate-fade">
+          <div className="page-header" style={{ marginBottom: 32 }}>
+            <h1>Invoices & Payments</h1>
+            <p style={{ color: 'var(--gray-500)' }}>Track billing and incoming payments from pharmacies</p>
           </div>
 
-          {/* Stats */}
-          <div className="orders-stats">
+          <div className="grid-3" style={{ marginBottom: 32 }}>
             {stats.map((stat, idx) => (
-              <div key={idx} className={`stat-card stat-${stat.color}`}>
-                <p className="stat-label">{stat.label}</p>
-                <p className="stat-number">{stat.value}</p>
+              <div key={idx} className="stat-card">
+                <div className={`stat-icon ${stat.color}`}>{stat.icon}</div>
+                <div>
+                  <div className="stat-value">{stat.value}</div>
+                  <div className="stat-label">{stat.label}</div>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Filter and Search */}
-          <div className="order-controls" style={{ marginBottom: '24px' }}>
-            <input
-              type="text"
-              placeholder="Search invoice ID, order ID or pharmacy..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Invoices</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="partial">Partial</option>
-              <option value="paid">Paid</option>
-            </select>
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="card-body" style={{ display: 'flex', gap: 16 }}>
+              <input
+                type="text"
+                placeholder="Search invoice ID, order ID or pharmacy..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+                style={{ flex: 1 }}
+              />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="form-input"
+                style={{ width: '200px' }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
           </div>
 
-          {/* Invoices Table */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: 'var(--shadow-sm)',
-            overflow: 'auto'
-          }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderBottom: '2px solid var(--border)'
-              }}>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: 600 }}>
-                    Invoice ID
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: 600 }}>
-                    Order ID
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: 600 }}>
-                    Pharmacy
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Amount
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Received
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Pending
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Status
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Due Date
-                  </th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: 600 }}>
-                    Action
-                  </th>
+                  <th>Invoice ID</th>
+                  <th>Order</th>
+                  <th>Pharmacy</th>
+                  <th>Billed</th>
+                  <th>Received</th>
+                  <th>Status</th>
+                  <th>Due Date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map((invoice) => {
-                  const pending = invoice.amount - invoice.paidAmount;
-                  return (
-                    <tr key={invoice.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{
-                        padding: '16px',
-                        fontWeight: 600,
-                        color: 'var(--primary)'
-                      }}>
-                        {invoice.id}
-                      </td>
-                      <td style={{ padding: '16px' }}>{invoice.orderId}</td>
-                      <td style={{ padding: '16px' }}>{invoice.pharmacyName}</td>
-                      <td style={{
-                        padding: '16px',
-                        textAlign: 'center',
-                        fontWeight: 600
-                      }}>
-                        Rs. {invoice.amount.toLocaleString()}
-                      </td>
-                      <td style={{
-                        padding: '16px',
-                        textAlign: 'center',
-                        fontWeight: 600,
-                        color: 'var(--success)'
-                      }}>
-                        Rs. {invoice.paidAmount.toLocaleString()}
-                      </td>
-                      <td style={{
-                        padding: '16px',
-                        textAlign: 'center',
-                        fontWeight: 600,
-                        color: pending > 0 ? 'var(--danger)' : 'var(--success)'
-                      }}>
-                        Rs. {pending.toLocaleString()}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <span className={`status-badge status-${getStatusColor(invoice.paymentStatus)}`}>
-                          {invoice.paymentStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {invoice.dueDate}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <button
-                          className="btn-text"
-                          style={{ fontSize: '0.85rem', margin: 0 }}
-                          onClick={() => {
-                            setSelectedOrder(invoice);
-                            setShowInvoice(true);
-                          }}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {loading ? (
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: 40 }}>Loading invoices...</td></tr>
+                ) : filteredInvoices.length === 0 ? (
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: 40 }}>No invoices found.</td></tr>
+                ) : filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td style={{ fontWeight: 700, color: 'var(--brand)' }}>{invoice.id}</td>
+                    <td>ORD-{invoice.orderId}</td>
+                    <td style={{ fontWeight: 600 }}>{invoice.pharmacyName}</td>
+                    <td style={{ fontWeight: 700 }}>Rs. {invoice.amount.toLocaleString()}</td>
+                    <td style={{ color: 'var(--success)', fontWeight: 600 }}>Rs. {invoice.paidAmount.toLocaleString()}</td>
+                    <td>
+                      <span className={`badge badge-${invoice.paymentStatus === 'paid' ? 'green' : invoice.paymentStatus === 'partial' ? 'amber' : 'red'}`}>
+                        {invoice.paymentStatus.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>{invoice.dueDate}</td>
+                    <td>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => {
+                          setSelectedOrder(invoice);
+                          setShowInvoice(true);
+                        }}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-
-          {filteredInvoices.length === 0 && (
-            <div className="no-results">
-              <p>No invoices found</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Invoice Modal */}
       {showInvoice && selectedOrder && (
-        <Modal onClose={() => setShowInvoice(false)} title={`Invoice ${selectedOrder.id}`} size="lg">
+        <Modal onClose={() => setShowInvoice(false)} title={`Invoice: ${selectedOrder.id}`}>
           <Invoice order={selectedOrder} />
         </Modal>
       )}
