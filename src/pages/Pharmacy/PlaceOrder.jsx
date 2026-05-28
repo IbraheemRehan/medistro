@@ -1,34 +1,110 @@
-import React, { useState, useEffect, useContext } from 'react';
-import axios from '../../config/api.config';
+import React, { useState, useEffect, useMemo } from 'react';
+import API, { getApiErrorMessage } from '../../config/api.config';
 import { useNavigate } from 'react-router-dom';
-import AuthContext from '../../context/AuthContext';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
 import Modal from '../../components/Modal';
+import PriceDisplay from '../../components/PriceDisplay';
+import { calcDiscountedPrice } from '../../utils/pricing';
 import { PharmacyNavItems } from '../../config/navItems';
+import { Toaster, toast } from 'react-hot-toast';
 import '../../styles/PlaceOrder.css';
 
+const distId = (item) => item.distributorId?._id || item.distributorId;
+
 const PlaceOrder = () => {
-  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [distributors, setDistributors] = useState([]);
   const [selectedDistributor, setSelectedDistributor] = useState(null);
-  
-  const [catalog, setCatalog] = useState([]); // from inventory
+  const [catalog, setCatalog] = useState([]);
   const [showMedicinesModal, setShowMedicinesModal] = useState(false);
-  const [orderItems, setOrderItems] = useState([]);
+  const [orderItems, setOrderItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('placeOrderCart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [orderNote, setOrderNote] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [placing, setPlacing] = useState(false);
 
-  // Fetch Distributors on mount
+  const selectedDistId = selectedDistributor?._id;
+
+  const distributorOrderItems = useMemo(
+    () => (selectedDistId ? orderItems.filter((i) => distId(i) === selectedDistId) : []),
+    [orderItems, selectedDistId]
+  );
+
+  useEffect(() => {
+    localStorage.setItem('placeOrderCart', JSON.stringify(orderItems));
+  }, [orderItems]);
+
+  // Reprice in-progress order items when distributor updates inventory/discount.
+  useEffect(() => {
+    const refreshFromInventoryUpdate = async () => {
+      try {
+        if (!selectedDistributor?._id) return;
+        const response = await API.get(`/api/v1/inventory?distributorId=${selectedDistributor._id}`);
+        const mappedCatalog = (response.data.inventory || []).map((inv) => ({
+          inventoryId: inv._id,
+          medicineId: inv.medicineId?._id,
+          name: inv.medicineId?.name || 'Unknown',
+          genericName: inv.medicineId?.genericName || '',
+          company: inv.medicineId?.company || 'Unknown',
+          price: inv.latestBatch?.salePrice || 0, // original unit price
+          discountPercent: inv.latestBatch?.discountPercent || 0,
+          batchId: inv.latestBatch?._id || null,
+          availableStock: inv.availableStock || 0,
+        }));
+
+        setCatalog(mappedCatalog);
+
+        const byBatchId = mappedCatalog.reduce((acc, c) => {
+          if (c.batchId) acc[c.batchId] = c;
+          return acc;
+        }, {});
+
+        setOrderItems((prev) =>
+          prev.map((it) => {
+            const info = it.batchId ? byBatchId[it.batchId] : null;
+            if (!info) return it;
+
+            const originalPrice = info.price;
+            const discountPercent = info.discountPercent || 0;
+            const finalPrice = calcDiscountedPrice(originalPrice, discountPercent);
+
+            return {
+              ...it,
+              originalPrice,
+              discountPercent,
+              price: finalPrice,
+              subtotal: Number((finalPrice * it.quantity).toFixed(2)),
+              maxStock: info.availableStock || it.maxStock,
+            };
+          })
+        );
+      } catch {
+        // Non-blocking: keep current UI if refresh fails.
+      }
+    };
+
+    const onStorage = (e) => {
+      if (e.key === 'inventoryUpdated') refreshFromInventoryUpdate();
+    };
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [selectedDistributor, setCatalog, setOrderItems]);
+
   useEffect(() => {
     const fetchDistributors = async () => {
       try {
-        const response = await axios.get('/api/v1/distributors');
-        // Deduplicate distributors by company name (case-insensitive) to prevent duplicate card grids
+        const response = await API.get('/api/v1/distributors');
         const uniqueDists = [];
         const seenNames = new Set();
-        (response.data || []).forEach(dist => {
+        (response.data || []).forEach((dist) => {
           const uniqueKey = (dist.companyName || '').trim().toLowerCase();
           if (uniqueKey && !seenNames.has(uniqueKey)) {
             seenNames.add(uniqueKey);
@@ -43,159 +119,180 @@ const PlaceOrder = () => {
     fetchDistributors();
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   const handleSelectDistributor = async (distributor) => {
     setSelectedDistributor(distributor);
-    
-    // Fetch this distributor's inventory
     try {
-      const response = await axios.get(`/api/v1/inventory?distributorId=${distributor._id}`);
-      // The API returns { inventory: [...] }. Map it.
-      const mappedCatalog = response.data.inventory.map(inv => ({
+      const response = await API.get(`/api/v1/inventory?distributorId=${distributor._id}`);
+      const mappedCatalog = (response.data.inventory || []).map((inv) => ({
         inventoryId: inv._id,
         medicineId: inv.medicineId?._id,
         name: inv.medicineId?.name || 'Unknown',
         genericName: inv.medicineId?.genericName || '',
-        company: inv.medicineId?.company || 'Unknown', // Fixed from manufacturer
-        price: inv.latestBatch?.salePrice || 0, // Read sale price from latest batch
-        batchId: inv.latestBatch?._id || null, // Preload batch ID directly from database
-        availableStock: inv.availableStock || 0
+        company: inv.medicineId?.company || 'Unknown',
+        price: inv.latestBatch?.salePrice || 0,
+        discountPercent: inv.latestBatch?.discountPercent || 0,
+        batchId: inv.latestBatch?._id || null,
+        availableStock: inv.availableStock || 0,
       }));
       setCatalog(mappedCatalog);
-      setShowMedicinesModal(true);
-    } catch (err) {
-      console.error('Failed to fetch inventory', err);
-      alert('Could not fetch inventory for this distributor. They may not have items.');
+    } catch {
+      toast.error('Could not load inventory for this distributor.');
+      setCatalog([]);
     }
   };
 
   const handleAddMedicine = async (medicine) => {
-    // Check if we have preloaded batch details directly from inventory
-    let validBatchId = medicine.batchId;
-    let salePrice = medicine.price;
-    
-    // Fallback async fetch only if batchId was not pre-populated
-    if (!validBatchId) {
-      try {
-        const batchRes = await axios.get(`/api/v1/batches/medicine/${medicine.medicineId}?distributorId=${selectedDistributor._id}`);
-        if (batchRes.data.batches && batchRes.data.batches.length > 0) {
-          // take first active batch
-          const activeBatch = batchRes.data.batches.find(b => b.isActive);
-          if (activeBatch) {
-            validBatchId = activeBatch._id;
-            salePrice = activeBatch.salePrice || medicine.price;
-          } else {
-             validBatchId = batchRes.data.batches[0]._id; // fallback
-          }
-        } else {
-          alert("No active batches found for this medicine. Cannot add to cart.");
-          return;
-        }
-      } catch (err) {
-         console.error("Failed to fetch batches", err);
-         alert("Error checking medicine batches.");
-         return;
-      }
+    if (!selectedDistributor) return;
+
+    const existingItem = distributorOrderItems.find(
+      (item) => item.medicineId === medicine.medicineId
+    );
+
+    if (existingItem && existingItem.quantity + 1 > medicine.availableStock) {
+      toast.error('Sorry, this medicine is out of stock or available quantity is not enough.');
+      return;
+    }
+    if (!existingItem && medicine.availableStock <= 0) {
+      toast.error('Sorry, this medicine is out of stock or available quantity is not enough.');
+      return;
     }
 
-    const existingItem = orderItems.find(item => item.medicineId === medicine.medicineId);
-    
+    const newQty = existingItem ? existingItem.quantity + 1 : 1;
+    const originalPrice = medicine.price;
+    const discountPercent = medicine.discountPercent || 0;
+    const finalPrice = calcDiscountedPrice(originalPrice, discountPercent);
+    let newOrderItems;
+
     if (existingItem) {
-      if (existingItem.quantity + 1 > medicine.availableStock) {
-        alert("Cannot exceed available stock!");
-        return;
-      }
-      setOrderItems(orderItems.map(item =>
-        item.medicineId === medicine.medicineId
-          ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
+      newOrderItems = orderItems.map((item) =>
+        item.medicineId === medicine.medicineId && distId(item) === selectedDistId
+          ? { ...item, quantity: newQty, subtotal: newQty * finalPrice }
           : item
-      ));
+      );
     } else {
-      setOrderItems([...orderItems, {
+      newOrderItems = [
+        ...orderItems,
+        {
+          medicineId: medicine.medicineId,
+          medicineName: medicine.name,
+          batchId: medicine.batchId,
+          distributorId: selectedDistributor._id,
+          price: finalPrice,
+          originalPrice,
+          discountPercent,
+          quantity: 1,
+          subtotal: finalPrice,
+          maxStock: medicine.availableStock,
+        },
+      ];
+    }
+    setOrderItems(newOrderItems);
+
+    try {
+      await API.post('/api/v1/cart/add', {
         medicineId: medicine.medicineId,
+        batchId: medicine.batchId,
         medicineName: medicine.name,
-        batchId: validBatchId,
+        quantity: newQty,
+        unitPrice: finalPrice,
+        originalUnitPrice: originalPrice,
+        discountPercent,
         distributorId: selectedDistributor._id,
-        price: salePrice,
-        quantity: 1,
-        subtotal: salePrice,
-        maxStock: medicine.availableStock 
-      }]);
+      });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to update cart.'));
     }
   };
 
   const handleRemoveItem = (medicineId) => {
-    setOrderItems(orderItems.filter(item => item.medicineId !== medicineId));
+    setOrderItems(
+      orderItems.filter(
+        (item) => !(item.medicineId === medicineId && distId(item) === selectedDistId)
+      )
+    );
   };
 
   const handleUpdateQuantity = (medicineId, newQuantity) => {
-    const item = orderItems.find(i => i.medicineId === medicineId);
+    const item = distributorOrderItems.find((i) => i.medicineId === medicineId);
     if (!item) return;
 
     if (newQuantity <= 0) {
       handleRemoveItem(medicineId);
     } else if (newQuantity > item.maxStock) {
-      alert("Exceeds available stock: " + item.maxStock);
+      toast.error('Sorry, this medicine is out of stock or available quantity is not enough.');
     } else {
-      setOrderItems(orderItems.map(i =>
-        i.medicineId === medicineId
-          ? { ...i, quantity: newQuantity, subtotal: newQuantity * i.price }
-          : i
-      ));
+      setOrderItems(
+        orderItems.map((i) =>
+          i.medicineId === medicineId && distId(i) === selectedDistId
+            ? { ...i, quantity: newQuantity, subtotal: Number((newQuantity * i.price).toFixed(2)) }
+            : i
+        )
+      );
     }
   };
 
   const handlePlaceOrder = () => {
-    if (orderItems.length === 0) {
-      alert('Please add medicines to your order');
+    if (!distributorOrderItems.length) {
+      toast.error('Please add medicines to your order');
       return;
     }
     setShowConfirm(true);
   };
 
   const handleConfirmOrder = async () => {
+    if (!selectedDistributor || !distributorOrderItems.length) return;
+
+    const itemsPayload = distributorOrderItems
+      .filter((curr) => curr.batchId)
+      .map((curr) => ({
+        medicineId: curr.medicineId,
+        batchId: curr.batchId,
+        quantity: curr.quantity,
+      }));
+
+    if (!itemsPayload.length) {
+      toast.error('Some items are missing batch information. Please re-add them.');
+      return;
+    }
+
+    setPlacing(true);
     try {
-      // payload matches { distributorId, items: [{medicineId, batchId, quantity}], note }
-      const payload = {
+      await API.post('/api/v1/orders', {
         distributorId: selectedDistributor._id,
         note: orderNote,
-        items: orderItems.map(curr => ({
-          medicineId: curr.medicineId,
-          batchId: curr.batchId,
-          quantity: curr.quantity
-        }))
-      };
+        items: itemsPayload,
+      });
 
-      const res = await axios.post('/api/v1/orders', payload);
-      alert('Order placed successfully! ' + res.data.message);
-      
-      setOrderItems([]);
+      await API.delete(`/api/v1/cart/distributor/${selectedDistributor._id}`);
+
+      setOrderItems((prev) => prev.filter((i) => distId(i) !== selectedDistId));
       setOrderNote('');
+      setShowConfirm(false);
+      toast.success('Order placed successfully! You can rate this order from My Orders.');
       setSelectedDistributor(null);
-      setShowConfirm(false);
-      navigate('/pharmacy/my-orders');
-      
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || 'Error occurred while placing order');
+      toast.error(getApiErrorMessage(err, 'Failed to place order.'));
       setShowConfirm(false);
+    } finally {
+      setPlacing(false);
     }
   };
 
-  const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+  const clearDistributorItems = () => {
+    setOrderItems((prev) => prev.filter((i) => distId(i) !== selectedDistId));
+  };
+
+  const totalAmount = distributorOrderItems.reduce((sum, item) => sum + item.subtotal, 0);
 
   return (
     <div className="app-layout">
+      <Toaster position="top-right" />
       <SidebarNav role="pharmacy" navItems={PharmacyNavItems} />
 
       <div className="main-content">
         <TopBar title="Place Order" />
 
-        <div className="place-order page-content animate-fade">
+        <div className="place-order page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header">
             <h1>Place New Order</h1>
             <p className="subtitle">Select a distributor and choose medicines</p>
@@ -203,7 +300,6 @@ const PlaceOrder = () => {
 
           {!selectedDistributor ? (
             <>
-              {/* Select Distributor */}
               <div className="section-title">
                 <h2>Step 1: Select Distributor</h2>
               </div>
@@ -211,10 +307,12 @@ const PlaceOrder = () => {
               <div className="distributors-grid">
                 {distributors.map((dist) => (
                   <div key={dist._id} className="distributor-card">
-                    <div className="card-header">
+                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h3>{dist.companyName}</h3>
+                      {dist.hasNoStock && (
+                        <span className="badge badge-red" style={{ fontSize: '11px', margin: 0 }}>No Stock</span>
+                      )}
                     </div>
-
                     <div className="card-details">
                       <div className="detail-item">
                         <label>License Number</label>
@@ -229,7 +327,6 @@ const PlaceOrder = () => {
                         <p>{dist.contactNumber}</p>
                       </div>
                     </div>
-
                     <div className="card-footer">
                       <button
                         className="btn btn-primary btn-full"
@@ -244,7 +341,6 @@ const PlaceOrder = () => {
             </>
           ) : (
             <>
-              {/* Selected Distributor Info */}
               <div className="selected-distributor">
                 <div className="dist-info">
                   <h2>{selectedDistributor.companyName}</h2>
@@ -252,16 +348,12 @@ const PlaceOrder = () => {
                 </div>
                 <button
                   className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setSelectedDistributor(null);
-                    setOrderItems([]);
-                  }}
+                  onClick={() => setSelectedDistributor(null)}
                 >
                   Change Distributor
                 </button>
               </div>
 
-              {/* Order Items */}
               <div className="order-section">
                 <div className="section-header">
                   <h2>Step 2: Add Medicines</h2>
@@ -273,7 +365,7 @@ const PlaceOrder = () => {
                   </button>
                 </div>
 
-                {orderItems.length > 0 ? (
+                {distributorOrderItems.length > 0 ? (
                   <div className="order-items">
                     <table className="items-table">
                       <thead>
@@ -286,14 +378,19 @@ const PlaceOrder = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {orderItems.map((item) => (
-                          <tr key={item.medicineId}>
+                        {distributorOrderItems.map((item) => (
+                          <tr key={`${item.medicineId}_${selectedDistId}`}>
                             <td className="medicine-cell">
-                              <div>
-                                <p className="medicine-name">{item.medicineName}</p>
-                              </div>
+                              <p className="medicine-name">{item.medicineName}</p>
                             </td>
-                            <td>Rs. {item.price}</td>
+                            <td>
+                              <PriceDisplay
+                                originalPrice={item.originalPrice ?? item.price}
+                                discountPercent={item.discountPercent}
+                                finalPrice={item.price}
+                                size="sm"
+                              />
+                            </td>
                             <td>
                               <div className="quantity-control">
                                 <button
@@ -306,7 +403,7 @@ const PlaceOrder = () => {
                                   type="number"
                                   value={item.quantity}
                                   onChange={(e) =>
-                                    handleUpdateQuantity(item.medicineId, parseInt(e.target.value))
+                                    handleUpdateQuantity(item.medicineId, parseInt(e.target.value, 10) || 0)
                                   }
                                   min="1"
                                 />
@@ -334,7 +431,7 @@ const PlaceOrder = () => {
                   </div>
                 ) : (
                   <div className="empty-items">
-                    <p>No medicines added yet</p>
+                    <p>No medicines added yet for this distributor</p>
                     <button
                       className="btn btn-primary"
                       onClick={() => setShowMedicinesModal(true)}
@@ -345,8 +442,7 @@ const PlaceOrder = () => {
                 )}
               </div>
 
-              {/* Order Notes */}
-              {orderItems.length > 0 && (
+              {distributorOrderItems.length > 0 && (
                 <div className="order-section">
                   <h2>Step 3: Order Details</h2>
                   <div className="form-group">
@@ -360,7 +456,6 @@ const PlaceOrder = () => {
                     />
                   </div>
 
-                  {/* Order Summary */}
                   <div className="order-summary">
                     <div className="summary-item">
                       <span>Subtotal</span>
@@ -380,12 +475,14 @@ const PlaceOrder = () => {
                     <button
                       className="btn btn-primary btn-lg"
                       onClick={handlePlaceOrder}
+                      disabled={placing}
                     >
-                      Place Order
+                      {placing ? 'Placing…' : 'Place Order'}
                     </button>
                     <button
                       className="btn btn-secondary btn-lg"
-                      onClick={() => setOrderItems([])}
+                      onClick={clearDistributorItems}
+                      disabled={placing}
                     >
                       Clear Items
                     </button>
@@ -397,47 +494,62 @@ const PlaceOrder = () => {
         </div>
       </div>
 
-      {/* Select Medicines Modal */}
       {showMedicinesModal && selectedDistributor && (
-        <Modal
-          onClose={() => setShowMedicinesModal(false)}
-          title={`Catalog: ${selectedDistributor.companyName}`}
-        >
-          <div className="medicines-catalog">
-            {catalog.length === 0 && <p>No inventory found for this distributor.</p>}
-            {catalog.map((medicine) => (
-              <div key={medicine.medicineId} className="medicine-catalog-item">
-                <div className="medicine-info">
-                  <h4>{medicine.name}</h4>
-                  <p className="generic">{medicine.genericName}</p>
-                  <p className="company">{medicine.company}</p>
-                  <p className="stock">Available Stock: {medicine.availableStock}</p>
-                </div>
-                <div className="medicine-price">
-                  <p className="price">Rs. {medicine.price}</p>
-                </div>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => handleAddMedicine(medicine)}
-                  disabled={medicine.availableStock <= 0}
-                >
-                  {medicine.availableStock <= 0 ? 'Out of Stock' : 'Add'}
-                </button>
-              </div>
-            ))}
+        <div className="card medicines-modal">
+          <div className="card-header">
+            <div className="catalog-header-row">
+              <h4 className="catalog-header">Catalog: {selectedDistributor.companyName}</h4>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowMedicinesModal(false)}
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
-        </Modal>
+          <div className="card-body">
+            {catalog.length === 0 ? (
+              <p style={{ color: 'var(--gray-400)', textAlign: 'center', padding: '40px 0' }}>
+                This distributor currently has no medicines available.
+              </p>
+            ) : (
+              <div className="medicines-catalog">
+                {catalog.map((med) => (
+                  <div key={med.medicineId} className="medicine-catalog-item">
+                    <h4>{med.name}</h4>
+                    <p className="generic">{med.genericName}</p>
+                    <p className="company">{med.company}</p>
+                    <p className="stock">✓ Stock: {med.availableStock}</p>
+                    <p className="price">
+                      <PriceDisplay
+                        originalPrice={med.price}
+                        discountPercent={med.discountPercent}
+                        size="sm"
+                      />
+                    </p>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={med.availableStock <= 0}
+                      onClick={() => handleAddMedicine(med)}
+                    >
+                      {med.availableStock <= 0 ? 'Out of Stock' : '+ Add to Cart'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Confirm Order Modal */}
       {showConfirm && (
-        <Modal onClose={() => setShowConfirm(false)} title="Confirm Order">
+        <Modal onClose={() => !placing && setShowConfirm(false)} title="Confirm Order">
           <div className="confirm-order">
-            <p>Are you sure you want to place this order?</p>
+            <p>Place order with <strong>{selectedDistributor?.companyName}</strong>?</p>
             <div className="order-confirm-summary">
               <div className="summary-item">
                 <span>Total Items:</span>
-                <span>{orderItems.length}</span>
+                <span>{distributorOrderItems.length}</span>
               </div>
               <div className="summary-item">
                 <span>Total Amount:</span>
@@ -445,12 +557,13 @@ const PlaceOrder = () => {
               </div>
             </div>
             <div className="modal-buttons" style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-              <button className="btn btn-primary" onClick={handleConfirmOrder}>
-                ✓ Confirm Order
+              <button className="btn btn-primary" onClick={handleConfirmOrder} disabled={placing}>
+                {placing ? 'Placing…' : '✓ Confirm Order'}
               </button>
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowConfirm(false)}
+                disabled={placing}
               >
                 Cancel
               </button>
@@ -458,6 +571,7 @@ const PlaceOrder = () => {
           </div>
         </Modal>
       )}
+
     </div>
   );
 };

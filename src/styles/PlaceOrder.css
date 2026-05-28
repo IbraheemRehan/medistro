@@ -1,23 +1,26 @@
 /* 
  * PlaceOrder & Procurement Stylesheet 
- * Elegant, premium enterprise design for Medistro procurement flows.
+ * Elegant, premium enterprise design — fully responsive for mobile, tablet & desktop.
  */
 
+/* ─── Page Entrance Animation ─────────────────────────────── */
 .place-order,
 .my-orders {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ─── Page Header ─────────────────────────────────────────── */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 32px;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-header h1 {
-  font-size: 28px;
+  font-size: clamp(22px, 4vw, 28px);
   font-weight: 800;
   color: var(--gray-900);
   letter-spacing: -0.02em;
@@ -28,9 +31,10 @@
   color: var(--gray-500);
   margin-top: 6px;
   font-size: 15px;
+  line-height: 1.5;
 }
 
-/* Pipeline Step Indicators */
+/* ─── Step / Section Title ────────────────────────────────── */
 .section-title {
   margin-bottom: 24px;
   display: flex;
@@ -52,12 +56,13 @@
   height: 20px;
   background: var(--brand);
   border-radius: 2px;
+  flex-shrink: 0;
 }
 
-/* Distributors Grid */
+/* ─── Distributors Grid ───────────────────────────────────── */
 .distributors-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 24px;
   margin-bottom: 32px;
 }
@@ -81,7 +86,7 @@
 }
 
 .distributor-card .card-header {
-  padding: 24px;
+  padding: 22px 24px;
   border-bottom: 1px solid var(--gray-100);
   display: flex;
   justify-content: space-between;
@@ -110,11 +115,11 @@
 }
 
 .card-details {
-  padding: 24px;
+  padding: 22px 24px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .detail-item {
@@ -125,10 +130,10 @@
 
 .detail-item label {
   color: var(--gray-400);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .detail-item p {
@@ -136,6 +141,7 @@
   color: var(--gray-700);
   font-weight: 600;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 .distributor-card .card-footer {
@@ -145,20 +151,22 @@
   margin-top: auto;
 }
 
-/* Selected Distributor Bar */
+/* ─── Selected Distributor Banner ─────────────────────────── */
 .selected-distributor {
   background: white;
   border-radius: var(--radius-lg);
-  padding: 24px 30px;
-  margin-bottom: 32px;
+  padding: 22px 28px;
+  margin-bottom: 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--gray-200);
   border-left: 5px solid var(--brand);
   position: relative;
   overflow: hidden;
+  flex-wrap: wrap;
 }
 
 .selected-distributor::after {
@@ -173,8 +181,8 @@
 }
 
 .dist-info h2 {
-  margin: 0 0 6px 0;
-  font-size: 18px;
+  margin: 0 0 5px 0;
+  font-size: clamp(15px, 3vw, 18px);
   font-weight: 800;
   color: var(--gray-900);
 }
@@ -186,35 +194,39 @@
   font-weight: 500;
 }
 
-/* Order Section Layout */
+/* ─── Order Section Card ──────────────────────────────────── */
 .order-section {
   background: white;
   border-radius: var(--radius-lg);
-  padding: 30px;
-  margin-bottom: 30px;
+  padding: clamp(20px, 4vw, 30px);
+  margin-bottom: 28px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
 }
 
+/* Section header — title + button row */
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 24px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--gray-100);
+  flex-wrap: wrap;
 }
 
 .section-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: clamp(16px, 3vw, 18px);
   font-weight: 700;
   color: var(--gray-800);
 }
 
-/* Order Items Table */
+/* ─── Order Items Table ───────────────────────────────────── */
 .order-items {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 24px;
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-100);
@@ -223,6 +235,7 @@
 .items-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 520px;
 }
 
 .items-table thead {
@@ -238,16 +251,22 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .items-table tbody td {
-  padding: 18px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--gray-100);
   vertical-align: middle;
+  font-size: 14px;
 }
 
 .items-table tbody tr:hover {
   background-color: var(--blue-50);
+}
+
+.items-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .medicine-cell {
@@ -255,7 +274,19 @@
   color: var(--gray-900);
 }
 
-/* Modern Rounded Quantity Control */
+.medicine-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.bold {
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+/* ─── Quantity Control ────────────────────────────────────── */
 .quantity-control {
   display: inline-flex;
   align-items: center;
@@ -268,8 +299,8 @@
 }
 
 .qty-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
   background-color: white;
   color: var(--gray-700);
@@ -281,6 +312,9 @@
   font-weight: 700;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .qty-btn:hover {
@@ -290,7 +324,7 @@
 }
 
 .quantity-control input {
-  width: 50px;
+  width: 46px;
   padding: 4px 0;
   border: none;
   background: transparent;
@@ -299,8 +333,15 @@
   font-size: 14px;
   color: var(--gray-800);
   outline: none;
+  -moz-appearance: textfield;
 }
 
+.quantity-control input::-webkit-outer-spin-button,
+.quantity-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ─── Empty State ─────────────────────────────────────────── */
 .empty-items {
   text-align: center;
   padding: 60px 30px;
@@ -313,11 +354,11 @@
   font-weight: 500;
 }
 
-/* Order Summary Block */
+/* ─── Order Summary ───────────────────────────────────────── */
 .order-summary {
   background-color: var(--gray-50);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 22px 24px;
   margin: 24px 0;
   border: 1px solid var(--gray-200);
 }
@@ -325,7 +366,8 @@
 .summary-item {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
+  align-items: center;
+  padding: 11px 0;
   border-bottom: 1px solid var(--gray-200);
   font-size: 14px;
   font-weight: 500;
@@ -339,44 +381,103 @@
 .summary-total {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 16px 0 0 0;
-  font-size: 18px;
+  font-size: clamp(16px, 3vw, 18px);
   font-weight: 800;
   color: var(--brand);
   border-top: 2px dashed var(--gray-300);
   margin-top: 12px;
 }
 
-/* Order Actions */
+/* ─── Order Actions ───────────────────────────────────────── */
 .order-actions {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   margin-top: 24px;
+  flex-wrap: wrap;
 }
 
 .btn-lg {
   padding: 14px 28px;
   font-size: 15px;
   flex: 1;
+  min-width: 140px;
 }
 
-/* Medicines Catalog Grid */
+/* ─── Medicines Catalog Modal Panel ───────────────────────── */
+.medicines-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100vw);
+  border-radius: 0;
+  border-left: 1px solid var(--gray-200);
+  box-shadow: -8px 0 40px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 500;
+  margin-top: 0 !important;
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Catalog card-header: stack title and button with gap */
+.medicines-modal .card-header {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  border-bottom: 1px solid var(--gray-200);
+  background: white;
+  flex-shrink: 0;
+}
+
+.catalog-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.catalog-header-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.medicines-modal .card-body {
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Medicines Catalog Grid ──────────────────────────────── */
 .medicines-catalog {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 20px;
-  max-height: 450px;
-  overflow-y: auto;
-  padding-right: 8px;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
 .medicine-catalog-item {
   background-color: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
   transition: var(--transition);
   position: relative;
 }
@@ -387,58 +488,53 @@
   transform: translateY(-2px);
 }
 
-.medicine-info h4 {
-  margin: 0 0 6px 0;
+.medicine-catalog-item h4 {
+  margin: 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--gray-900);
+  line-height: 1.3;
 }
 
-.medicine-info .generic {
+.medicine-catalog-item .generic {
   color: var(--gray-400);
   font-size: 12px;
   font-weight: 600;
-  margin: 0 0 6px 0;
+  margin: 0;
 }
 
-.medicine-info .company {
+.medicine-catalog-item .company {
   color: var(--gray-500);
   font-size: 12px;
   margin: 0;
 }
 
-.medicine-price {
-  margin: 16px 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.medicine-catalog-item .stock {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
 }
 
-.medicine-price label {
-  color: var(--gray-400);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.price {
+.medicine-catalog-item .price {
   font-size: 18px;
   font-weight: 800;
-  color: var(--success);
+  color: var(--brand);
   margin: 0;
 }
 
 .medicine-catalog-item .btn-primary {
-  margin: 0;
+  margin: 4px 0 0 0;
   width: 100%;
   padding: 10px;
   border-radius: var(--radius-sm);
   font-size: 13px;
 }
 
-/* Confirm Order Modal Summary */
+/* ─── Confirm Order Modal ─────────────────────────────────── */
 .confirm-order {
   display: flex;
   flex-direction: column;
@@ -449,7 +545,7 @@
   margin: 0;
   color: var(--gray-500);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .order-confirm-summary {
@@ -464,6 +560,7 @@
   padding: 10px 0;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 14px;
 }
 
@@ -476,77 +573,159 @@
   font-weight: 800;
 }
 
-/* MyOrders Dashboard Stats and Items */
+/* ─── MyOrders Stats & Container ──────────────────────────── */
 .orders-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
   margin-bottom: 30px;
 }
 
 .orders-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   gap: 24px;
 }
 
-/* Responsive Upgrades */
+/* ─── Responsive: Tablet (≤ 1024px) ──────────────────────── */
 @media (max-width: 1024px) {
-  .place-order,
-  .my-orders {
-    padding: 0;
+  .medicines-modal {
+    width: min(420px, 100vw);
   }
 
   .distributors-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  }
-
-  .medicines-catalog {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   }
 }
 
+/* ─── Responsive: Mobile landscape + tablet (≤ 768px) ────── */
 @media (max-width: 768px) {
   .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+  }
+
+  /* Distributor banner stacks vertically */
+  .selected-distributor {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+  }
+
+  .selected-distributor .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Distributor grid → single column */
+  .distributors-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Order section padding */
+  .order-section {
+    padding: 18px 16px;
+  }
+
+  /* Section header stacks */
+  .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  .selected-distributor {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 20px;
+  .section-header .btn {
+    width: 100%;
+    justify-content: center;
   }
 
-  .distributors-grid,
-  .medicines-catalog {
-    grid-template-columns: 1fr;
-  }
-
-  .order-actions {
-    flex-direction: column;
-  }
-
+  /* Table smaller text, still scrollable */
   .items-table {
     font-size: 13px;
   }
 
   .items-table thead th,
   .items-table tbody td {
-    padding: 10px;
+    padding: 11px 12px;
   }
 
-  .medicines-catalog {
-    max-height: none;
+  /* Order actions stack */
+  .order-actions {
+    flex-direction: column;
   }
 
+  .btn-lg {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Stats grid */
   .orders-stats {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .orders-container {
     grid-template-columns: 1fr;
+  }
+
+  /* Catalog panel becomes full-width bottom sheet on mobile */
+  .medicines-modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    max-height: 80vh;
+    border-left: none;
+    border-top: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.15);
+    animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideInUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+}
+
+/* ─── Responsive: Small phones (≤ 480px) ─────────────────── */
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 20px;
+  }
+
+  .page-header .subtitle {
+    font-size: 13px;
+  }
+
+  .distributor-card .card-header,
+  .card-details,
+  .distributor-card .card-footer {
+    padding: 16px;
+  }
+
+  .orders-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-total {
+    font-size: 16px;
+  }
+
+  .medicines-modal .card-header {
+    padding: 16px 18px;
+  }
+
+  .medicines-modal .card-body {
+    padding: 16px 18px;
   }
 }

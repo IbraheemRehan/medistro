@@ -21,15 +21,24 @@ const FindDistributors = () => {
       try {
         setLoading(true);
         const response = await API.get('/api/v1/distributors');
-        const formattedData = response.data.map(dist => ({
+        // Deduplicate by company name (case-insensitive)
+        const seen = new Set();
+        const uniqueData = (response.data || []).filter(dist => {
+          const key = (dist.companyName || '').trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        const formattedData = uniqueData.map(dist => ({
           id: dist._id,
           companyName: dist.companyName,
           licenseNumber: dist.licenseNumber || 'N/A',
           address: dist.address,
           contactNumber: dist.contactNumber || 'N/A',
-          rating: (Math.random() * (5 - 4) + 4).toFixed(1),
-          totalPharmacies: Math.floor(Math.random() * 50) + 10,
-          medicines: Math.floor(Math.random() * 100) + 50,
+          rating: dist.rating ? Number(dist.rating).toFixed(1) : '0.0',
+          totalPharmacies: dist.totalPharmaciesCount || 0,
+          medicines: dist.medicinesCount || 0,
+          hasNoStock: dist.hasNoStock || false,
           established: new Date(dist.createdAt).toLocaleDateString()
         }));
         setDistributors(formattedData);
@@ -54,7 +63,7 @@ const FindDistributors = () => {
       <div className="main-content">
         <TopBar title="Partner Distributors" />
 
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header" style={{ marginBottom: 32 }}>
             <h1>Connect with Distributors</h1>
             <p style={{ color: 'var(--gray-500)' }}>Find and order from the best medical distributors in your region</p>
@@ -98,6 +107,12 @@ const FindDistributors = () => {
                     <p style={{ fontSize: 13, color: 'var(--gray-500)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FiMapPin /> {dist.address}
                     </p>
+
+                    {dist.hasNoStock && (
+                      <div style={{ background: 'var(--red-50)', color: 'var(--danger)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', marginBottom: '16px' }}>
+                        OUT OF STOCK
+                      </div>
+                    )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                        <div style={{ background: 'var(--gray-50)', padding: 12, borderRadius: 12, textAlign: 'center' }}>

@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import PublicTopBar from '../../components/PublicTopBar';
 import '../../styles/About.css';
 import { FiTarget, FiShield, FiTrendingUp, FiLayers, FiUsers, FiCpu } from 'react-icons/fi';
 import { MdOutlineLocalPharmacy } from 'react-icons/md';
 
 export default function About() {
+  const navigate = useNavigate();
   const features = [
     {
       icon: <FiTarget />,
@@ -129,7 +131,13 @@ export default function About() {
 
       <footer className="about-footer">
         <div className="about-container">
-          <p>&copy; 2026 Medistro Platform. All rights reserved.</p>
+          <p
+            style={{ cursor: 'default', userSelect: 'none' }}
+            onClick={() => navigate('/admin-login')}
+            title=""
+          >
+            &copy; 2026 Medistro Platform. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

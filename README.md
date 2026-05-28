@@ -1,163 +1,220 @@
-Medistro — Pharmacy Distribution Frontend
+# Medistro Frontend
 
-Professional React frontend for the Medistro pharmacy distribution platform. This app provides role-based UIs for Distributors, Pharmacies, Employees and Admins to manage inventory, orders, invoices and users.
+## Overview
 
-Key features
-- Role-based dashboards (Distributor, Pharmacy, Employee, Admin)
-- Stock and order management, invoice generation, employee task management
-- Responsive UI with reusable components and printable invoices
-- Ready to integrate with the Medistro backend API
+This repository contains the React frontend for the Medistro pharmacy distribution platform.
 
-Tech stack
-- React 19, react-scripts, react-router-dom
-- Axios for API calls, Recharts for charts, html2canvas + jsPDF for invoice export
+The frontend offers role-specific user interfaces for:
+- **Distributors** — manage stock, orders, invoices, and employees
+- **Pharmacies** — browse distributors, place orders, and view invoices
+- **Employees** — monitor assigned tasks
+- **Admins** — access management and moderation tools
 
-Prerequisites
-- Node.js v14+ and npm or yarn
+The React app is configured to communicate with the backend API in `../medistro_server`.
 
-Quick start (development)
-1. Install dependencies
+---
 
-```bash
-npm install
-```
+## Technology Stack
 
-2. Start the dev server
+- React 19
+- react-router-dom v7 for routing
+- Axios for HTTP requests
+- Recharts for charts and dashboard metrics
+- html2canvas + jsPDF for invoice export
+- react-hot-toast for notifications
+- socket.io-client for realtime updates
 
-```bash
-npm start
-```
+---
 
-The app runs at http://localhost:3000 by default. This project sets a proxy to `http://localhost:4000` for API requests — update `package.json` if your backend runs on a different port.
-
-Build for production
-
-```bash
-npm run build
-```
-
-This outputs an optimized `build/` folder ready to be served by any static server or deployed behind the backend.
-
-Environment & backend integration
-- The frontend expects a REST API that follows the server routes (authentication, medicines, orders, invoices, users). Replace mock data with API calls in the `src` components (see `context/AuthContext.jsx` and `pages/*` for examples).
-- If the backend is running locally on port 4000, the provided `proxy` in `package.json` will forward API requests to it.
-
-Scripts
-- `npm start` — development server
-- `npm run build` — production build
-- `npm test` — run tests
-
-Useful paths
-- Main app: `src/App.jsx`
-- Auth state: `src/context/AuthContext.jsx`
-- Pages: `src/pages/` (Distributor, Pharmacy, Admin)
-- Shared components: `src/components/`
-
-Testing credentials (demo)
-- Distributor: distributor@demo.com / demo123
-- Pharmacy: pharmacy@demo.com / demo123
-- Admin: admin@demo.com / demo123
-
-Notes & next steps
-- To fully enable the app, run the backend and set up required environment variables (see server README). You may also seed test accounts using the server `scripts/` utilities.
-
-License
-This project is provided for educational purposes.
-
-Version: 1.0.0
-Last updated: 2026-05
- 
-About this document
-This README expands on the frontend's purpose, architecture, how to run it locally, development tips, and a reflection on what was learned while building the project. Use this as the primary reference for contributors and evaluators.
-
-Project summary
-Medistro frontend is a role-based React application that provides interfaces for Distributors, Pharmacies, Employees and Admins to manage inventory, orders, invoices and user tasks. It prioritizes a clean UX, printable invoices, and a modular component structure so the UI can be integrated with a backend API.
-
-Architecture & key concepts
-- Single Page Application (SPA) built with React and `react-router-dom` for client-side routing.
-- Global auth state managed with a React context (`src/context/AuthContext.jsx`) which stores tokens and user role information.
-- API calls are made with `axios` (replace mock data with real endpoints in `src` components).
-- Reusable components: `src/components/` contains shared UI like `SidebarNav`, `TopBar`, `Modal`, and `Invoice`.
-
-Important design decisions
-- Role-based navigation and protected routes to ensure only authorized users see specific pages.
-- Separation of concerns: UI logic in components/pages, auth logic in context, and API layer centralized where appropriate.
-
-Detailed run instructions
-Prerequisites
-- Node.js v14+ and npm (or yarn)
-
-Local development (frontend)
-1. Install dependencies
+## Installation
 
 ```bash
 cd medistro
 npm install
 ```
 
-2. Start the dev server
+### Run in development
 
 ```bash
 npm start
 ```
 
-3. Open the app
+The app runs at `http://localhost:3000` by default.
 
-Visit http://localhost:3000 in your browser. The frontend is configured with a proxy to `http://localhost:4000` so API calls will be forwarded to the backend when it runs locally.
-
-Building for production
+### Build for production
 
 ```bash
 npm run build
 ```
 
-This generates an optimized `build/` directory for static hosting.
+This produces an optimized `build/` folder ready for deployment.
 
-Testing
+### Run tests
 
 ```bash
 npm test
 ```
 
-Environment & configuration
-- The frontend does not require a `.env` by default; API base URLs can be modified in axios instances or by changing the `proxy` field in `package.json`.
+---
 
-Connecting to the backend
-- Ensure the backend is running on the same host/port used by `proxy` (by default `http://localhost:4000`). If your backend runs at a different URL, either update the `proxy` in `package.json` or set the API base URL where `axios` is configured.
+## API Integration
 
-Development notes & tips
-- When adding new API calls, centralize them in a `src/api/` helper so swapping base URLs or adding interceptors is easier.
-- Use `AuthContext` to manage token refresh and protected-route wrappers.
-- Invoice export uses `html2canvas` + `jsPDF` — test print/export flows in the browser.
+The frontend is configured to use `http://localhost:4000` as the backend API host via the `proxy` field in `package.json`.
 
-Project structure (important files)
-- `src/App.jsx` — main routes and app shell
-- `src/context/AuthContext.jsx` — authentication provider and hooks
-- `src/pages/` — top-level pages for each role
+A few pages use `REACT_APP_API_URL` if defined, otherwise they fall back to `http://localhost:4000`.
+
+### Most common API endpoints
+
+- `POST /api/v1/users/login`
+- `POST /api/v1/users/register`
+- `GET /api/v1/users/profile`
+- `PUT /api/v1/users/profile`
+- `POST /api/v1/users/change-password`
+- `GET /api/v1/medicines`
+- `POST /api/v1/medicines`
+- `GET /api/v1/orders`
+- `POST /api/v1/orders`
+- `GET /api/v1/invoices`
+- `POST /api/v1/cart/add`
+- `DELETE /api/v1/cart/clear`
+
+---
+
+## Project Structure
+
+```
+medistro/
+├─ public/
+├─ src/
+│  ├─ assets/
+│  ├─ components/
+│  ├─ config/
+│  ├─ context/
+│  ├─ pages/
+│  ├─ styles/
+│  └─ App.js
+├─ package.json
+└─ README.md
+```
+
+### Important files
+
+- `src/App.js` — route definitions and role-based rendering
+- `src/context/AuthContext.jsx` — auth state, login/logout, JWT handling
+- `src/context/SocketContext.jsx` — realtime socket provider
+- `src/config/api.config.js` — Axios instance with base URL and interceptors
+- `src/pages/` — screens for each user role and shared pages
 - `src/components/` — reusable UI components
 
-What I learned (frontend)
-- React fundamentals: component composition, hooks (`useState`, `useEffect`, `useContext`) and controlled forms.
-- Routing and protected routes with `react-router-dom`.
-- State and side-effect patterns for API-driven UIs.
-- Integrating third-party libraries like `recharts` for charts and `html2canvas`/`jsPDF` for exporting UI to PDF.
-- Building a role-based UI with clear separation between presentation and business logic.
-- Practical debugging and developer tooling (React DevTools, browser network panel).
+---
 
-Common issues & troubleshooting
-- Blank page on start: check console for missing imports or failing module resolutions.
-- CORS / API errors: ensure backend `medistro_server` is running and proxy or base URL is correct.
+## Routing and Roles
 
-Next steps / enhancements
-- Add a centralized API client (`src/api/`) and environment-driven config.
-- Replace any remaining mock data with real endpoints and add client-side caching.
-- Add end-to-end tests to validate critical user flows (login, place order, generate invoice).
+The app supports the following route groups:
 
-Contributing
-- Fork the repo, create a feature branch, open a PR with a concise description, and include screenshots for UI changes.
+### Public routes
+- `/login`
+- `/register`
+- `/about`
+- `/verify-email`
+- `/forgot-password`
+- `/admin-login`
+- `/auth/google/callback`
 
-Acknowledgements
-- Built as part of an academic project demonstrating full-stack skills in React and Node.
+### Distributor routes
+- `/distributor/dashboard`
+- `/distributor/stock`
+- `/distributor/orders`
+- `/distributor/employees`
+- `/distributor/invoices`
+
+### Pharmacy routes
+- `/pharmacy/dashboard`
+- `/pharmacy/place-order`
+- `/pharmacy/cart`
+- `/pharmacy/my-orders`
+- `/pharmacy/invoices`
+- `/pharmacy/distributors`
+
+### Employee routes
+- `/employee/dashboard`
+
+### Admin routes
+- `/admin/dashboard`
+- `/admin/moderation`
+- `/admin/users`
+
+---
+
+## Key Functionality
+
+### Authentication
+- Login and registration flows
+- Password recovery and email verification
+- Google OAuth callback support
+- Role-based protected routing
+
+### Distributor features
+- Stock and medicine management
+- Order review and fulfillment
+- Invoice generation and status tracking
+- Employee assignment and task tracking
+
+### Pharmacy features
+- Browse distributors and inventory
+- Build cart and place orders
+- Track orders and invoices
+- Rate order service after receipt
+
+### Employee features
+- Review assigned tasks
+- Update task statuses
+- View employee dashboard analytics
+
+---
+
+## Configuration
+
+The frontend uses a proxy in `package.json`:
+
+```json
+"proxy": "http://localhost:4000"
+```
+
+To use a different backend URL, either update the proxy or set `REACT_APP_API_URL` in your environment.
+
+---
+
+## Development Notes
+
+- Centralize additional API calls in a shared API helper to keep requests consistent.
+- Keep authentication logic in `AuthContext.jsx`.
+- Use reusable components from `src/components/` for layout, cards, tables, and modals.
+- Validate backend responses and show errors via toast notifications.
+
+---
+
+## Troubleshooting
+
+- Blank page after startup: check the browser console for runtime errors.
+- CORS or network errors: verify the backend is running and proxy / base URL is correct.
+- Login failures: ensure the correct backend environment variables and JWT secret are configured.
+
+---
+
+## Future improvements
+
+- Add centralized API error handling and retry logic
+- Add Cypress or Playwright end-to-end tests
+- Add environment-specific build config for staging and production
+- Add a dedicated design system folder for shared component styles
+
+---
+
+## License
+
+This README is for educational and demonstration purposes.
+
 
 Contact
 - For questions about the frontend implementation, inspect `src/` or open an issue in the project tracker.

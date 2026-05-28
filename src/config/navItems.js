@@ -1,13 +1,13 @@
 import React from 'react';
 import { 
   FiBarChart2, FiUsers, FiUser, FiShoppingCart, 
-  FiShoppingBag, FiBox, FiFileText, FiClock
+  FiShoppingBag, FiBox, FiFileText, FiClock, FiShield
 } from 'react-icons/fi';
 import { MdOutlineLocalPharmacy, MdLocalShipping, MdOutlineInventory } from 'react-icons/md';
 
 export const AdminNavItems = [
   { label: 'Dashboard',  path: '/admin/dashboard', icon: <FiBarChart2 /> },
-  { label: 'Users',      path: '/admin/users',      icon: <FiUsers /> },
+  { label: 'Moderation', path: '/admin/moderation', icon: <FiShield /> },
   { label: 'Profile',    path: '/profile',           icon: <FiUser /> },
 ];
 
@@ -31,8 +31,6 @@ export const DistributorNavItems = [
 ];
 
 export const EmployeeNavItems = [
-  { label: 'Dashboard',    path: '/employee/dashboard',    icon: <FiBarChart2 /> },
-  { label: 'Stock',        path: '/distributor/stock',     icon: <MdOutlineInventory /> },
-  { label: 'Orders',       path: '/employee/orders',       icon: <FiShoppingCart /> },
-  { label: 'Profile',      path: '/profile',               icon: <FiUser /> },
+  { label: 'Dashboard', path: '/employee/dashboard', icon: <FiBarChart2 /> },
+  { label: 'Profile',    path: '/profile',               icon: <FiUser /> },
 ];

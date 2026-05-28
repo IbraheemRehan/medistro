@@ -8,6 +8,8 @@ import Register from './pages/Register';
 import About from './pages/Shared/About';
 import VerifyEmail from './pages/Shared/VerifyEmail';
 import ForgotPassword from './pages/Shared/ForgotPassword';
+import AdminLogin from './pages/Admin/AdminLogin';
+import { Toaster } from 'react-hot-toast';
 
 // Distributor pages
 import DistributorDashboard  from './pages/Distributor/Dashboard';
@@ -29,12 +31,14 @@ import Cart              from './pages/Pharmacy/Cart';
 
 // Admin pages
 import AdminDashboard from './pages/Admin/Dashboard';
+import AdminModeration from './pages/Admin/Moderation';
 
 // Shared
 import Profile from './pages/Shared/Profile';
 
 // Context
 import AuthContext, { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 
 // Google OAuth callback handler component
 function GoogleOAuthCallback() {
@@ -73,6 +77,7 @@ function AppContent() {
       <Route path="/about"           element={<About />} />
       <Route path="/verify-email"    element={<VerifyEmail />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/admin-login"     element={<AdminLogin />} />
       <Route path="/auth/google/callback" element={<GoogleOAuthCallback />} />
 
       {!user ? (
@@ -86,9 +91,11 @@ function AppContent() {
           {/* Admin */}
           {user.role === 'admin' && (
             <>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/profile"         element={<Profile />} />
-              <Route path="*"                element={<Navigate to="/admin/dashboard" />} />
+              <Route path="/admin/dashboard"  element={<AdminDashboard />} />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
+              <Route path="/admin/users"      element={<AdminModeration />} />
+              <Route path="/profile"          element={<Profile />} />
+              <Route path="*"                 element={<Navigate to="/admin/dashboard" />} />
             </>
           )}
 
@@ -137,7 +144,10 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <SocketProvider>
+          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+          <AppContent />
+        </SocketProvider>
       </AuthProvider>
     </Router>
   );

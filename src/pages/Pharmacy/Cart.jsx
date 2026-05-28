@@ -1,170 +1,436 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import AuthContext from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import '../../styles/cart.css';
+import { Toaster, toast } from 'react-hot-toast';
 import SidebarNav from '../../components/SidebarNav';
 import TopBar from '../../components/TopBar';
 import API from '../../config/api.config';
 import { PharmacyNavItems } from '../../config/navItems';
-import { FiShoppingCart, FiShoppingBag, FiBox, FiFileText, FiUser, FiTrash2, FiAlertCircle, FiCheckCircle, FiX, FiBarChart2 } from 'react-icons/fi';
-import { MdOutlineLocalPharmacy, MdLocalShipping } from 'react-icons/md';
+import {
+  FiShoppingBag, FiTrash2, FiX, FiCheckCircle,
+  FiAlertCircle, FiPackage, FiShield, FiMail,
+  FiChevronRight, FiMinus, FiPlus,
+} from 'react-icons/fi';
 
+/* ─── helpers ─────────────────────────────────────────── */
+const medicineKey = item =>
+  `${item.medicineId?._id || item.medicineId}_${item.batchId}`;
+
+/* ─── CartItem ────────────────────────────────────────── */
+function CartItem({ item, onIncrease, onDecrease, onRemove, isUpdating }) {
+  const subtotal = (item.unitPrice * item.quantity).toLocaleString();
+  const company  = item.distributorId?.companyName || 'Distributor';
+  const originalUnitPrice = item.originalUnitPrice ?? item.unitPrice ?? 0;
+  const discountPercent = item.discountPercent ?? 0;
+  const hasDiscount = discountPercent > 0 && Number(originalUnitPrice) > Number(item.unitPrice);
+
+  return (
+    <div className={`ci-card${isUpdating ? ' ci-card--updating' : ''}`}>
+      {/* left – medicine icon */}
+      <div className="ci-icon">
+        <FiPackage size={20} />
+      </div>
+
+      {/* centre – info */}
+      <div className="ci-info">
+        <p className="ci-name">{item.medicineName}</p>
+        <div className="ci-meta">
+          <span className="ci-badge">{company}</span>
+          <span className="ci-unit">PKR {item.unitPrice?.toLocaleString()} / unit</span>
+          {hasDiscount && (
+            <>
+              <span className="ci-original">PKR {Number(originalUnitPrice).toLocaleString()}</span>
+              <span className="ci-discount">Save {discountPercent}%</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* qty stepper */}
+      <div className="ci-stepper">
+        <button
+          className="step-btn"
+          onClick={() => onDecrease(item)}
+          disabled={item.quantity <= 1 || isUpdating}
+          aria-label="Decrease quantity"
+        >
+          <FiMinus size={14} />
+        </button>
+        <span className="step-val">{item.quantity}</span>
+        <button
+          className="step-btn"
+          onClick={() => onIncrease(item)}
+          disabled={isUpdating}
+          aria-label="Increase quantity"
+        >
+          <FiPlus size={14} />
+        </button>
+      </div>
+
+      {/* subtotal */}
+      <div className="ci-subtotal">PKR {subtotal}</div>
+
+      {/* remove */}
+      <button
+        className="ci-remove"
+        onClick={() => onRemove(item)}
+        disabled={isUpdating}
+        aria-label="Remove item"
+      >
+        <FiX size={15} />
+      </button>
+    </div>
+  );
+}
+
+/* ─── DistributorTabs ─────────────────────────────────── */
+function DistributorTabs({ items, active, onChange }) {
+  const ids = [...new Set(items.map(i => i.distributorId?._id || i.distributorId))];
+  if (ids.length <= 1) return null;
+
+  return (
+    <div className="dist-tabs">
+      {ids.map(id => {
+        const name = items.find(
+          i => (i.distributorId?._id || i.distributorId) === id
+        )?.distributorId?.companyName || 'Distributor';
+        return (
+          <button
+            key={id}
+            className={`dist-tab${active === id ? ' dist-tab--active' : ''}`}
+            onClick={() => onChange(id)}
+          >
+            {name}
+            <span className="dist-tab-count">
+              {items.filter(i => (i.distributorId?._id || i.distributorId) === id).length}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── OrderSummary ────────────────────────────────────── */
+function OrderSummary({ filteredItems, total, onPlace, placing }) {
+  const finalTotal = filteredItems.reduce((s, i) => s + Number(i.unitPrice) * i.quantity, 0);
+  const originalTotal = filteredItems.reduce((s, i) => {
+    const originalUnit = i.originalUnitPrice ?? i.unitPrice;
+    return s + Number(originalUnit) * i.quantity;
+  }, 0);
+  const discountTotal = Math.max(0, originalTotal - finalTotal);
+
+  return (
+    <div className="os-card">
+      <div className="os-head">
+        <span className="os-head-icon"><FiShoppingBag size={16} /></span>
+        <h3>Order Summary</h3>
+      </div>
+
+      <div className="os-body">
+        {/* line items */}
+        <ul className="os-lines">
+          {filteredItems.map((item, i) => (
+            <li key={i} className="os-line">
+              <span className="os-line-name">
+                {item.medicineName}
+                <span className="os-line-qty">×{item.quantity}</span>
+              </span>
+              <span className="os-line-price">
+                PKR {(item.unitPrice * item.quantity).toLocaleString()}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="os-sep" />
+
+        {/* totals */}
+        <div className="os-totals">
+          <div className="os-row">
+            <span className="os-row-label">Original Price</span>
+            <span className="os-row-val">PKR {originalTotal.toLocaleString()}</span>
+          </div>
+          <div className="os-row">
+            <span className="os-row-label">Discount</span>
+            <span className="os-row-val" style={{ color: 'var(--success, #059669)' }}>
+              − PKR {discountTotal.toLocaleString()}
+            </span>
+          </div>
+          <div className="os-sep" />
+          <div className="os-row os-grand">
+            <span className="os-row-label">Final Price</span>
+            <span className="os-row-val os-grand-val">PKR {finalTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <button
+          className="os-cta"
+          onClick={onPlace}
+          disabled={placing || filteredItems.length === 0}
+        >
+          {placing ? (
+            <>
+              <span className="os-spinner" />
+              Placing Order…
+            </>
+          ) : (
+            <>
+              <FiCheckCircle size={17} />
+              Place Order
+              <FiChevronRight size={15} style={{ marginLeft: 'auto' }} />
+            </>
+          )}
+        </button>
+
+        {/* trust badges */}
+        <div className="os-trust">
+          <span><FiShield size={13} /> Secure checkout</span>
+          <span><FiMail size={13} /> Email confirmation</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Cart (main) ─────────────────────────────────────── */
 export default function Cart() {
-  const { user } = useContext(AuthContext);
-  const [cart, setCart]       = useState({ items: [] });
-  const [total, setTotal]     = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [placing, setPlacing] = useState(false);
-  const [error, setError]     = useState('');
-  const [success, setSuccess] = useState('');
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  const fetchCart = async () => {
+  const [items, setItems]                   = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState('');
+  const [placing, setPlacing]               = useState(false);
+  const [filterDistributorId, setFilterDistributorId] = useState('');
+  // tracks which medicine keys are mid-request
+  const [updating, setUpdating]             = useState(new Set());
+
+  /* ── fetch ── */
+  const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await API.get('/api/v1/cart');
-      setCart(data.cart || { items: [] });
-      setTotal(data.totalAmount || 0);
-    } catch { setError('Failed to load cart.'); }
-    finally { setLoading(false); }
-  };
+      const fetched = data.cart?.items || [];
+      setItems(fetched);
+      const ids = [...new Set(fetched.map(i => i.distributorId?._id || i.distributorId))];
+      if (ids.length) setFilterDistributorId(prev => (ids.includes(prev) ? prev : ids[0]));
+    } catch {
+      setError('Failed to load cart.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchCart(); }, []);
+  useEffect(() => {
+    fetchCart();
+    const onStorage = e => {
+      if (e.key === 'placeOrderCart' || e.key === 'inventoryUpdated') fetchCart();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [fetchCart]);
 
-  const updateQty = async (item, qty) => {
-    if (qty < 1) return;
+  /* ── derived ── */
+  const filteredItems = items.filter(
+    i => !filterDistributorId || (i.distributorId?._id || i.distributorId) === filterDistributorId
+  );
+  const total = filteredItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  // total breakdown is recomputed inside OrderSummary, but we keep `total` for existing API calls.
+
+  /* ── optimistic quantity update ── */
+  const changeQty = async (item, newQty) => {
+    if (newQty < 1) return;
+    const key = medicineKey(item);
+
+    // 1. Optimistic – update local state immediately (no re-fetch)
+    setItems(prev =>
+      prev.map(i => medicineKey(i) === key ? { ...i, quantity: newQty } : i)
+    );
+    setUpdating(prev => new Set(prev).add(key));
+
     try {
       await API.post('/api/v1/cart/add', {
-        medicineId:   item.medicineId?._id || item.medicineId,
-        batchId:      item.batchId,
-        medicineName: item.medicineName,
-        quantity:     qty,
-        unitPrice:    item.unitPrice,
+        medicineId:    item.medicineId?._id || item.medicineId,
+        batchId:       item.batchId,
+        medicineName:  item.medicineName,
+        quantity:      newQty,
+        unitPrice:     item.unitPrice,
+        originalUnitPrice: item.originalUnitPrice,
+        discountPercent: item.discountPercent,
         distributorId: item.distributorId?._id || item.distributorId,
       });
-      fetchCart();
-    } catch { setError('Failed to update quantity.'); }
+    } catch {
+      // 2. Revert on failure
+      setItems(prev =>
+        prev.map(i => medicineKey(i) === key ? { ...i, quantity: item.quantity } : i)
+      );
+      toast.error('Failed to update quantity.');
+    } finally {
+      setUpdating(prev => { const s = new Set(prev); s.delete(key); return s; });
+    }
   };
 
-  const removeItem = async (medicineId) => {
+  /* ── remove ── */
+  const removeItem = async item => {
+    const key = medicineKey(item);
+    const medicineId = item.medicineId?._id || item.medicineId;
+
+    // Optimistic remove
+    setItems(prev => prev.filter(i => medicineKey(i) !== key));
+    setUpdating(prev => new Set(prev).add(key));
+
     try {
       await API.delete(`/api/v1/cart/item/${medicineId}`);
-      fetchCart();
-    } catch { setError('Failed to remove item.'); }
+      toast.success('Item removed');
+    } catch {
+      // Revert
+      setItems(prev => [...prev, item]);
+      toast.error('Failed to remove item.');
+    } finally {
+      setUpdating(prev => { const s = new Set(prev); s.delete(key); return s; });
+    }
   };
 
+  /* ── clear ── */
   const clearCart = async () => {
     if (!window.confirm('Clear your entire cart?')) return;
-    try { await API.delete('/api/v1/cart/clear'); fetchCart(); }
-    catch { setError('Failed to clear cart.'); }
-  };
-
-  const placeOrder = async () => {
-    if (!cart.items?.length) return;
-    const firstItem = cart.items[0];
-    const distributorId = firstItem.distributorId?._id || firstItem.distributorId;
-    setPlacing(true); setError(''); setSuccess('');
+    const snapshot = [...items];
+    setItems([]);
     try {
-      const items = cart.items.map(i => ({
-        medicineId: i.medicineId?._id || i.medicineId,
-        batchId: i.batchId,
-        quantity: i.quantity,
-      }));
-      await API.post('/api/v1/orders', { distributorId, items });
       await API.delete('/api/v1/cart/clear');
-      setSuccess('Order placed successfully! Confirmation email sent.');
-      fetchCart();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to place order.');
+      toast.success('Cart cleared');
+    } catch {
+      setItems(snapshot);
+      toast.error('Failed to clear cart.');
     }
-    setPlacing(false);
   };
 
+  /* ── place order ── */
+  const placeOrder = async () => {
+    if (!items.length) { toast.error('Your cart is empty.'); return; }
+    if (!filterDistributorId) { toast.error('Please select a distributor.'); return; }
+    const distIds = [...new Set(items.map(i => i.distributorId?._id || i.distributorId))];
+    if (distIds.length > 1) {
+      toast.error('Cart has items from multiple distributors. Use the tabs to place per distributor.');
+      return;
+    }
+    const itemsToOrder = filteredItems
+      .filter(i => i.batchId)
+      .map(i => ({
+        medicineId: i.medicineId?._id || i.medicineId,
+        batchId:    i.batchId,
+        quantity:   i.quantity,
+      }));
+    setPlacing(true);
+    try {
+      await API.post('/api/v1/orders', { distributorId: filterDistributorId, items: itemsToOrder, note: '' });
+      await API.delete('/api/v1/cart/clear');
+      toast.success('Order placed! Confirmation email sent.');
+      localStorage.removeItem('placeOrderCart');
+      navigate('/pharmacy/my-orders');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to place order.');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  /* ── render ── */
   return (
-    <div className="app-layout">
+    <div className="app-layout fade-in">
+      <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'inherit', fontSize: 14 } }} />
       <SidebarNav role="pharmacy" navItems={PharmacyNavItems} />
+
       <div className="main-content">
         <TopBar title="My Cart" />
-        <div className="page-content animate-fade">
-          <div className="page-header page-header-row">
-            <div>
-              <h1><FiShoppingBag style={{marginRight:12}}/> Shopping Cart</h1>
-              <p>{cart.items?.length || 0} item(s) in your cart</p>
+
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
+
+          {/* ── Page header ── */}
+          <div className="cart-header">
+            <div className="cart-header-left">
+              <h1><FiShoppingBag /> Shopping Cart</h1>
+              <p>
+                <strong>{items.length}</strong> item{items.length !== 1 ? 's' : ''} in your cart
+              </p>
             </div>
-            {cart.items?.length > 0 && (
-              <button className="btn btn-danger btn-sm" onClick={clearCart} style={{display:'flex', alignItems:'center', gap:8}}><FiTrash2 /> Clear Cart</button>
+            {items.length > 0 && (
+              <button className="cart-clear-btn" onClick={clearCart}>
+                <FiTrash2 size={14} /> Clear Cart
+              </button>
             )}
           </div>
 
-          {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}><FiAlertCircle style={{marginRight:8}}/> {error}</div>}
-          {success && <div className="alert alert-success" style={{ marginBottom: 16 }}><FiCheckCircle style={{marginRight:8}}/> {success}</div>}
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>
-              <div className="spinner spinner-blue" style={{ width: 32, height: 32, margin: '0 auto 12px' }} />
-              <p>Loading cart…</p>
+          {/* ── Alerts ── */}
+          {error && (
+            <div className="cart-alert cart-alert--error">
+              <FiAlertCircle size={16} /> {error}
             </div>
-          ) : cart.items?.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '60px 32px' }}>
-              <div style={{ marginBottom: 16 }}><FiShoppingCart size={56} color="#9CA3AF" /></div>
-              <h3 style={{ color: '#374151', marginBottom: 8 }}>Your cart is empty</h3>
-              <p style={{ color: '#6B7280', fontSize: 14 }}>Browse medicines and add them to your cart.</p>
-              <a href="/pharmacy/place-order" className="btn btn-primary" style={{ marginTop: 20, display: 'inline-flex' }}>
-                Browse Medicines
+          )}
+
+          {/* ── Loading ── */}
+          {loading ? (
+            <div className="cart-loading-state">
+              <div className="cart-loading-spinner" />
+              <p>Loading your cart…</p>
+            </div>
+
+          /* ── Empty ── */
+          ) : items.length === 0 ? (
+            <div className="cart-empty">
+              <div className="cart-empty-icon">
+                <FiShoppingBag size={40} />
+              </div>
+              <h3>Your cart is empty</h3>
+              <p>Browse medicines and add them to your cart.</p>
+              <a href="/pharmacy/place-order" className="cart-browse-btn">
+                Browse Medicines <FiChevronRight size={15} />
               </a>
             </div>
-          ) : (
-            <div className="cart-grid">
-              {/* Cart Items */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {cart.items.map((item, idx) => (
-                  <div key={idx} className="card" style={{ padding: 20, display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#1565C0' }}>
-                      <MdOutlineLocalPharmacy size={24} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: '#111827', fontSize: 15 }}>{item.medicineName}</div>
-                      <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-                        {item.distributorId?.companyName || 'Distributor'} · PKR {item.unitPrice?.toLocaleString()} / unit
-                      </div>
-                    </div>
-                    {/* Quantity controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button className="btn btn-secondary btn-sm" style={{ width: 32, padding: '6px 0' }}
-                        onClick={() => updateQty(item, item.quantity - 1)}>−</button>
-                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 700, fontSize: 15 }}>{item.quantity}</span>
-                      <button className="btn btn-secondary btn-sm" style={{ width: 32, padding: '6px 0' }}
-                        onClick={() => updateQty(item, item.quantity + 1)}>+</button>
-                    </div>
-                    <div style={{ minWidth: 90, textAlign: 'right', fontWeight: 700, color: '#1565C0' }}>
-                      PKR {(item.unitPrice * item.quantity).toLocaleString()}
-                    </div>
-                    <button className="btn btn-danger btn-sm" style={{ padding: '6px 10px', display:'flex', alignItems:'center', justifyContent:'center' }}
-                      onClick={() => removeItem(item.medicineId?._id || item.medicineId)}><FiX /></button>
-                  </div>
-                ))}
-              </div>
 
-              {/* Order Summary */}
-              <div className="card" style={{ padding: 24, position: 'sticky', top: 84 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 20 }}>Order Summary</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                  {cart.items.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6B7280' }}>
-                      <span>{item.medicineName} × {item.quantity}</span>
-                      <span style={{ fontWeight: 600, color: '#374151' }}>PKR {(item.unitPrice * item.quantity).toLocaleString()}</span>
-                    </div>
+          /* ── Items ── */
+          ) : (
+            <>
+              <DistributorTabs
+                items={items}
+                active={filterDistributorId}
+                onChange={setFilterDistributorId}
+              />
+
+              <div className="cart-body">
+                {/* items column */}
+                <div className="cart-items-col">
+                  <p className="col-label">
+                    {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+                    {[...new Set(items.map(i => i.distributorId?._id || i.distributorId))].length > 1
+                      ? ' from selected distributor'
+                      : ''}
+                  </p>
+
+                  {filteredItems.map(item => (
+                    <CartItem
+                      key={medicineKey(item)}
+                      item={item}
+                      onIncrease={i => changeQty(i, i.quantity + 1)}
+                      onDecrease={i => changeQty(i, i.quantity - 1)}
+                      onRemove={removeItem}
+                      isUpdating={updating.has(medicineKey(item))}
+                    />
                   ))}
                 </div>
-                <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <span style={{ fontWeight: 700, color: '#111827', fontSize: 15 }}>Total</span>
-                  <span style={{ fontWeight: 800, color: '#1565C0', fontSize: 18 }}>PKR {total.toLocaleString()}</span>
-                </div>
-                <button className="btn btn-primary btn-full btn-lg" onClick={placeOrder} disabled={placing}>
-                  {placing ? <><span className="spinner" /> Placing…</> : <><FiCheckCircle style={{marginRight:8}}/> Place Order</>}
-                </button>
-                <p style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: 12 }}>
-                  A confirmation email will be sent after placing your order.
-                </p>
+
+                {/* summary column */}
+                <OrderSummary
+                  filteredItems={filteredItems}
+                  total={total}
+                  onPlace={placeOrder}
+                  placing={placing}
+                />
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>

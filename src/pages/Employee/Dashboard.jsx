@@ -63,7 +63,7 @@ const EmployeeDashboard = () => {
       <div className="main-content">
         <TopBar title="My Task Center" />
 
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header">
             <h1>Workspace: {employeeData?.name}</h1>
             <p style={{ color: 'var(--gray-500)' }}>Working at {employeeData?.distributorId?.companyName} · {employeeData?.position}</p>
@@ -104,9 +104,9 @@ const EmployeeDashboard = () => {
                       tasks.map((task) => (
                         <tr key={task._id}>
                           <td style={{ fontWeight: 600 }}>{task.title}</td>
-                          <td>{new Date(task.dueDate).toLocaleDateString()}</td>
+                          <td>{new Date(task.dueDate).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</td>
                           <td>
-                            <span className={`badge badge-${task.status === 'completed' ? 'green' : task.status === 'in-progress' ? 'blue' : 'gray'}`}>
+                            <span className={`badge badge-${task.status === 'completed' ? 'green' : task.status === 'in-progress' ? 'blue' : task.status === 'not completed' ? 'red' : 'gray'}`}>
                               {task.status.toUpperCase()}
                             </span>
                           </td>
@@ -115,11 +115,13 @@ const EmployeeDashboard = () => {
                               className="form-input"
                               style={{ padding: '6px 12px', fontSize: '12px', width: 'auto' }}
                               value={task.status}
+                              disabled={task.status === 'not completed'}
                               onChange={(e) => handleUpdateStatus(task._id, e.target.value)}
                             >
                               <option value="pending">Pending</option>
                               <option value="in-progress">In Progress</option>
                               <option value="completed">Completed</option>
+                              <option value="not completed">Not Completed</option>
                             </select>
                           </td>
                         </tr>

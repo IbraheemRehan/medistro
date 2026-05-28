@@ -37,6 +37,7 @@ const StockManagement = () => {
         threshold: item.lowStockThreshold || 10,
         expiryDate: item.latestBatch?.expiryDate ? new Date(item.latestBatch.expiryDate).toLocaleDateString() : 'N/A',
         salePrice: item.latestBatch?.salePrice || 0,
+        discountPercent: item.latestBatch?.discountPercent || 0,
         purchasePrice: item.latestBatch?.purchasePrice || 0
       }));
       setInventory(formatted);
@@ -60,6 +61,7 @@ const StockManagement = () => {
     quantity: '',
     purchasePrice: '',
     salePrice: '',
+    discountPercent: '',
     expiryDate: ''
   });
 
@@ -119,6 +121,7 @@ const StockManagement = () => {
         batchNumber: `BATCH-${Date.now()}`,
         purchasePrice: Number(newMedicine.purchasePrice),
         salePrice: Number(newMedicine.salePrice),
+        discountPercent: newMedicine.discountPercent === '' ? 0 : Number(newMedicine.discountPercent),
         expiryDate: newMedicine.expiryDate,
         quantity: Number(newMedicine.quantity)
       });
@@ -128,15 +131,57 @@ const StockManagement = () => {
       // Reset form
       setNewMedicine({
         medicineName: '', genericName: '', company: '', category: '',
-        unitType: 'Tablet', quantity: '', purchasePrice: '', salePrice: '', expiryDate: ''
+        unitType: 'Tablet', quantity: '', purchasePrice: '', salePrice: '', discountPercent: '', expiryDate: ''
       });
 
       // Refresh table
       fetchInventory();
+      localStorage.setItem('inventoryUpdated', Date.now().toString());
 
     } catch (err) {
       console.error('Failed to add medicine', err);
       alert(err.response?.data?.message || 'Error occurred while saving');
+    }
+  };
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    salePrice: '',
+    discountPercent: '',
+    availableStock: '',
+  });
+
+  const openEditModal = (item) => {
+    setEditTarget(item);
+    setEditForm({
+      name: item.medicineName,
+      salePrice: item.salePrice,
+      discountPercent: item.discountPercent ?? 0,
+      availableStock: item.availableStock,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateInventory = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    try {
+      await API.put(`/api/v1/inventory/${editTarget.id}`, {
+        name: editForm.name,
+        salePrice: Number(editForm.salePrice),
+        discountPercent: editForm.discountPercent === '' ? 0 : Number(editForm.discountPercent),
+        availableStock: Number(editForm.availableStock),
+      });
+      setShowEditModal(false);
+      setEditTarget(null);
+      fetchInventory();
+      // Let open pharmacy tabs refresh prices.
+      localStorage.setItem('inventoryUpdated', Date.now().toString());
+      alert('Medicine & stock updated successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update medicine/stock.');
     }
   };
 
@@ -169,7 +214,7 @@ const StockManagement = () => {
       <div className="main-content">
         <TopBar title="Inventory Management" />
 
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
             <div>
               <h1>Inventory Management</h1>
@@ -249,15 +294,16 @@ const StockManagement = () => {
                   <th>Expiry Date</th>
                   <th>Purchase Price</th>
                   <th>Sale Price</th>
+                  <th>Discount</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: 40 }}>Loading inventory...</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: 40 }}>Loading inventory...</td></tr>
                 ) : filteredInventory.length === 0 ? (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: 40 }}>No inventory found</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: 40 }}>No inventory found</td></tr>
                 ) : filteredInventory.map((item) => {
                   const status = getStockStatus(item.availableStock, item.threshold);
                   return (
@@ -274,12 +320,25 @@ const StockManagement = () => {
                       <td>Rs. {item.purchasePrice.toLocaleString()}</td>
                       <td>Rs. {item.salePrice.toLocaleString()}</td>
                       <td>
+                        {item.discountPercent > 0 ? (
+                          <span style={{ background: 'var(--green-50)', color: 'var(--success, #059669)', fontWeight: 800, padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(5,150,105,0.18)' }}>
+                            {item.discountPercent}%
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--gray-400)', fontWeight: 600 }}>—</span>
+                        )}
+                      </td>
+                      <td>
                         <span className={`badge badge-${status === 'critical' ? 'red' : status === 'low' ? 'amber' : 'green'}`}>
                           {status.toUpperCase()}
                         </span>
                       </td>
                       <td>
-                        <button className="btn btn-secondary btn-sm" title="Edit Item">
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          title="Edit Item"
+                          onClick={() => openEditModal(item)}
+                        >
                           <FiEdit2 />
                         </button>
                       </td>
@@ -453,11 +512,90 @@ const StockManagement = () => {
               </div>
             </div>
 
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label">Discount % (optional)</label>
+              <input
+                type="number"
+                className="form-input"
+                value={newMedicine.discountPercent}
+                onChange={(e) => setNewMedicine({ ...newMedicine, discountPercent: e.target.value })}
+                min="0"
+                max="100"
+              />
+            </div>
+
             <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
               <button type="submit" className="btn btn-primary btn-full">
                 Add Medicine & Stock
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showEditModal && editTarget && (
+        <Modal onClose={() => setShowEditModal(false)} title="Edit Medicine Pricing & Stock">
+          <form onSubmit={handleUpdateInventory}>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Medicine Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sale Price (per unit) *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={editForm.salePrice}
+                  onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ marginTop: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Discount %</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={editForm.discountPercent}
+                  onChange={(e) => setEditForm({ ...editForm, discountPercent: e.target.value })}
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Available Stock *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={editForm.availableStock}
+                  onChange={(e) => setEditForm({ ...editForm, availableStock: e.target.value })}
+                  min="0"
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+              <button type="submit" className="btn btn-primary btn-full">
+                Save Changes
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowEditModal(false)}
+              >
                 Cancel
               </button>
             </div>

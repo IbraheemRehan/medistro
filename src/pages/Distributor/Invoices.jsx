@@ -8,6 +8,8 @@ import Invoice from '../../components/Invoice';
 import API from '../../config/api.config';
 import { DistributorNavItems } from '../../config/navItems';
 import { FiFileText, FiDollarSign, FiClock, FiCheckCircle } from 'react-icons/fi';
+import { useSocket } from '../../context/SocketContext';
+import { getPaymentBadgeClass, getPaymentLabel, normalizePaymentStatus } from '../../utils/orderStatus';
 
 const DistributorInvoices = () => {
   const { logout } = useContext(AuthContext);
@@ -19,46 +21,73 @@ const DistributorInvoices = () => {
   const [loading, setLoading] = useState(true);
 
   const [invoices, setInvoices] = useState([]);
+  const { socket } = useSocket();
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const response = await API.get('/api/v1/invoices');
+      const formattedData = response.data.map(inv => {
+        const orderRef = inv.orderId || {};
+        return {
+          invoiceDbId: inv._id,
+          id: inv.invoiceNumber,
+          displayId: orderRef._id?.substring(0, 8) || 'Unknown',
+          orderMongoId: orderRef._id,
+          orderStatus: orderRef.status || 'unknown',
+          orderId: orderRef._id?.substring(0, 8) || 'Unknown',
+          pharmacyName: inv.pharmacyId?.pharmacyName || 'Unknown Pharmacy',
+          amount: inv.totalAmount,
+          paidAmount: inv.amountPaid || 0,
+          paymentStatus: normalizePaymentStatus(inv.paymentStatus),
+          dueDate: new Date(inv.dueDate).toLocaleDateString(),
+          createdDate: new Date(inv.createdAt).toLocaleDateString(),
+          totalAmount: inv.totalAmount,
+          
+          // Reconstruct the nested structures expected by <Invoice />
+          invoiceNumber: inv.invoiceNumber,
+          createdAt: new Date(inv.createdAt).toLocaleDateString(),
+          distributorId: inv.distributorId || {},
+          pharmacyId: {
+            ...inv.pharmacyId,
+            licenseNumber: inv.pharmacyId?.drugLicenseNumber || 'N/A',
+          },
+          items: orderRef.items || [],
+        };
+      });
+      setInvoices(formattedData);
+    } catch (err) {
+      console.error("Failed to fetch invoices", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        setLoading(true);
-        const response = await API.get('/api/v1/invoices');
-        const formattedData = response.data.map(inv => {
-          const orderRef = inv.orderId || {};
-          return {
-            id: inv.invoiceNumber,
-            displayId: orderRef._id?.substring(0, 8) || 'Unknown',
-            orderId: orderRef._id?.substring(0, 8) || 'Unknown',
-            pharmacyName: inv.pharmacyId?.pharmacyName || 'Unknown Pharmacy',
-            amount: inv.totalAmount,
-            paidAmount: inv.amountPaid || 0,
-            paymentStatus: inv.paymentStatus,
-            dueDate: new Date(inv.dueDate).toLocaleDateString(),
-            createdDate: new Date(inv.createdAt).toLocaleDateString(),
-            totalAmount: inv.totalAmount,
-            
-            // Reconstruct the nested structures expected by <Invoice />
-            invoiceNumber: inv.invoiceNumber,
-            createdAt: new Date(inv.createdAt).toLocaleDateString(),
-            distributorId: inv.distributorId || {},
-            pharmacyId: {
-              ...inv.pharmacyId,
-              licenseNumber: inv.pharmacyId?.drugLicenseNumber || 'N/A',
-            },
-            items: orderRef.items || [],
-          };
-        });
-        setInvoices(formattedData);
-      } catch (err) {
-        console.error("Failed to fetch invoices", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchInvoices();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("payment:updated", fetchInvoices);
+    return () => socket.off("payment:updated", fetchInvoices);
+  }, [socket]);
+
+  const handleMarkPaid = async (invoice) => {
+    if (!invoice?.invoiceDbId) return;
+    if (!window.confirm(`Mark invoice ${invoice.id} as PAID? This will update distributor earnings.`)) return;
+
+    try {
+      await API.put(`/api/v1/invoices/${invoice.invoiceDbId}/status`, {
+        paymentStatus: 'paid',
+        amountPaid: invoice.amount,
+      });
+      await fetchInvoices();
+      alert('Payment marked as paid successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to mark as paid.');
+    }
+  };
 
   const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
@@ -87,7 +116,7 @@ const DistributorInvoices = () => {
       <div className="main-content">
         <TopBar title="Invoice Management" />
 
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header" style={{ marginBottom: 32 }}>
             <h1>Invoices & Payments</h1>
             <p style={{ color: 'var(--gray-500)' }}>Track billing and incoming payments from pharmacies</p>
@@ -123,7 +152,8 @@ const DistributorInvoices = () => {
               >
                 <option value="all">All Statuses</option>
                 <option value="unpaid">Unpaid</option>
-                <option value="partial">Partial</option>
+                <option value="pending_payment">Pending Payment</option>
+                <option value="payment_verified">Payment Verified</option>
                 <option value="paid">Paid</option>
               </select>
             </div>
@@ -156,21 +186,32 @@ const DistributorInvoices = () => {
                     <td style={{ fontWeight: 700 }}>Rs. {invoice.amount.toLocaleString()}</td>
                     <td style={{ color: 'var(--success)', fontWeight: 600 }}>Rs. {invoice.paidAmount.toLocaleString()}</td>
                     <td>
-                      <span className={`badge badge-${invoice.paymentStatus === 'paid' ? 'green' : invoice.paymentStatus === 'partial' ? 'amber' : 'red'}`}>
-                        {invoice.paymentStatus.toUpperCase()}
+                      <span className={`badge ${getPaymentBadgeClass(invoice.paymentStatus)}`}>
+                        {getPaymentLabel(invoice.paymentStatus).toUpperCase()}
                       </span>
                     </td>
                     <td>{invoice.dueDate}</td>
                     <td>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setSelectedOrder(invoice);
-                          setShowInvoice(true);
-                        }}
-                      >
-                        View
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {invoice.paymentStatus !== 'paid' &&
+                          (invoice.orderStatus === 'completed' || invoice.orderStatus === 'delivered' || invoice.orderStatus === 'received') && (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleMarkPaid(invoice)}
+                            >
+                              Mark as Paid
+                            </button>
+                          )}
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
+                            setSelectedOrder(invoice);
+                            setShowInvoice(true);
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -181,7 +222,7 @@ const DistributorInvoices = () => {
       </div>
 
       {showInvoice && selectedOrder && (
-        <Modal onClose={() => setShowInvoice(false)} title={`Invoice: ${selectedOrder.id}`}>
+        <Modal onClose={() => setShowInvoice(false)} title={`Invoice: ${selectedOrder.id}`} size="xl">
           <Invoice order={selectedOrder} />
         </Modal>
       )}

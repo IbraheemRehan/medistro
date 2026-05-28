@@ -38,7 +38,7 @@ const EmployeeManagement = () => {
           id: t._id,
           title: t.title,
           status: t.status,
-          dueDate: new Date(t.dueDate).toLocaleDateString()
+          dueDate: new Date(t.dueDate).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
         }))
       }));
       setEmployees(mapped);
@@ -138,7 +138,7 @@ const EmployeeManagement = () => {
       <div className="main-content">
         <TopBar title="Employee Management" />
 
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
             <div>
               <h1>Employee Management</h1>
@@ -296,8 +296,8 @@ const EmployeeManagement = () => {
                 <input type="text" className="form-input" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} required />
              </div>
              <div className="form-group">
-                <label className="form-label">Due Date *</label>
-                <input type="date" className="form-input" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} required />
+                <label className="form-label">Due Date & Time *</label>
+                <input type="datetime-local" className="form-input" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} required />
              </div>
              <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                 <button type="submit" className="btn btn-primary btn-full">Assign Now</button>
@@ -327,6 +327,7 @@ const EmployeeManagement = () => {
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
                     <option value="completed">Completed</option>
+                    <option value="not completed">Not Completed</option>
                   </select>
                 </div>
               ))

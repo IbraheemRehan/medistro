@@ -475,3 +475,184 @@
   .role-cards { grid-template-columns: 1fr; }
   .auth-step-connector { width: 30px; }
 }
+
+/* ============================================================
+   Admin Login Page
+   ============================================================ */
+
+.admin-login-page { overflow: hidden; }
+
+.admin-login-split {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+/* Admin brand panel — dark crimson/slate */
+.admin-brand-panel {
+  flex: 0 0 42%;
+  background: linear-gradient(160deg, #1a0a2e 0%, #2d0a4a 45%, #3d0070 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-brand-panel::before {
+  content: '';
+  position: absolute;
+  top: -120px; right: -80px;
+  width: 360px; height: 360px;
+  border-radius: 50%;
+  background: rgba(180, 0, 80, 0.15);
+}
+
+.admin-brand-panel::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; left: -60px;
+  width: 280px; height: 280px;
+  border-radius: 50%;
+  background: rgba(120, 0, 200, 0.12);
+}
+
+.admin-brand-content {
+  position: relative;
+  z-index: 1;
+  color: white;
+  max-width: 380px;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.admin-brand-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  color: #e879f9;
+  filter: drop-shadow(0 0 20px rgba(232, 121, 249, 0.4));
+}
+
+.admin-brand-content h1 {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 14px;
+  line-height: 1.15;
+}
+
+.admin-brand-content > p {
+  font-size: 15px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+
+.admin-brand-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-brand-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.07);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Admin form panel */
+.admin-form-panel {
+  flex: 1;
+  background: #f9f5ff;
+}
+
+.admin-form-card {
+  border: 1px solid rgba(139, 0, 200, 0.08);
+  box-shadow: 0 10px 50px rgba(139, 0, 200, 0.08);
+  max-width: 480px;
+}
+
+/* Warning banner */
+.admin-warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-warning-icon {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #ea580c;
+  margin-top: 1px;
+}
+
+.admin-warning-banner p { margin: 0; }
+
+/* Admin form logo */
+.admin-form-logo {
+  font-size: 40px;
+  color: #7c3aed;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+/* Admin CTA button — purple */
+.btn-admin {
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 12px 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+}
+
+.btn-admin:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-admin:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+
+/* Admin back link */
+.admin-back-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+/* Admin focus ring */
+.admin-form-panel .form-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+}
+
+@media (max-width: 850px) {
+  .admin-brand-panel { display: none; }
+  .admin-login-split { flex-direction: column; }
+  .admin-form-panel { padding: 24px 16px; }
+  .admin-form-card { max-width: 100%; }
+}

@@ -9,10 +9,18 @@ import API from '../../config/api.config';
 import { AdminNavItems } from '../../config/navItems';
 import { FiBarChart2, FiUsers, FiUser, FiDollarSign, FiBox, FiAlertCircle, FiTrendingUp, FiPieChart, FiClock } from 'react-icons/fi';
 import { MdOutlineLocalPharmacy, MdLocalShipping } from 'react-icons/md';
+import {
+  getPaymentBadgeClass,
+  getPaymentLabel,
+  getWorkflowBadgeClass,
+  getWorkflowLabel,
+  normalizePaymentStatus,
+  normalizeWorkflowStatus,
+} from '../../utils/orderStatus';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PIE_COLORS  = ['#1565C0','#00897B','#F59E0B','#DC2626','#0288D1','#7C3AED'];
-const STATUS_COLORS = { pending:'#F59E0B', approved:'#0288D1', delivered:'#00897B', rejected:'#DC2626', dispatched:'#7C3AED' };
+const STATUS_COLORS = { pending:'#F59E0B', accepted:'#0288D1', processing:'#2563EB', delivered:'#00897B', cancelled:'#DC2626', dispatched:'#7C3AED', completed:'#00897B' };
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -31,20 +39,40 @@ export default function AdminDashboard() {
   const [topMeds, setTopMeds]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
+  const [invoiceByOrderId, setInvoiceByOrderId] = useState({});
+  const [syncTick, setSyncTick] = useState(0);
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [statsRes, medsRes] = await Promise.all([
+        const [statsRes, medsRes, invoicesRes] = await Promise.all([
           API.get('/api/v1/analytics/stats'),
           API.get('/api/v1/analytics/top-medicines'),
+          API.get('/api/v1/invoices').catch(() => ({ data: [] })),
         ]);
         setStats(statsRes.data);
         setTopMeds(medsRes.data.topMedicines || []);
+
+        const invoices = invoicesRes.data || [];
+        const map = invoices.reduce((acc, inv) => {
+          const key = inv.orderId?._id || inv.orderId;
+          if (!key) return acc;
+          acc[key.toString()] = inv;
+          return acc;
+        }, {});
+        setInvoiceByOrderId(map);
       } catch { setError('Failed to load analytics. Make sure you are logged in as Admin.'); }
       finally { setLoading(false); }
     };
     fetchAll();
+  }, [syncTick]);
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'paymentUpdated') setSyncTick(Date.now());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const monthlyData = (stats?.monthlyOrders || []).map(m => ({
@@ -53,28 +81,32 @@ export default function AdminDashboard() {
     Revenue: m.revenue || 0,
   }));
 
-  const statusData = (stats?.ordersByStatus || []).map(s => ({
-    name: s._id ? s._id.charAt(0).toUpperCase() + s._id.slice(1) : 'Unknown',
-    value: s.count,
-  }));
+  const statusData = (stats?.ordersByStatus || [])
+    .map(s => ({
+      name: getWorkflowLabel(normalizeWorkflowStatus(s._id)),
+      value: s.count,
+    }))
+    .filter((s) => s.name.toLowerCase() !== "pending");
 
-  const userRoleData = (stats?.usersByRole || []).map(u => ({
-    name: u._id ? u._id.charAt(0).toUpperCase() + u._id.slice(1) : 'Unknown',
-    value: u.count,
-  }));
+  const userRoleData = (stats?.usersByRole || [])
+    .filter((u) => Boolean(u._id))
+    .map(u => ({
+      name: u._id.charAt(0).toUpperCase() + u._id.slice(1),
+      value: u.count,
+    }));
 
   const topMedsData = topMeds.slice(0, 8).map(m => ({
-    name: m.medicineName || 'Unknown',
-    Ordered: m.totalOrdered,
+    name: m.medicineName || m.genericName || 'Medicine',
+    Ordered: m.totalOrdered || 0,
   }));
 
   const kpis = stats ? [
-    { label: 'Total Revenue',   value: `PKR ${(stats.stats.totalRevenue||0).toLocaleString()}`, icon: <FiDollarSign />, color: 'green' },
-    { label: 'Total Orders',    value: stats.stats.totalOrders,   icon: <FiBox />, color: 'blue'  },
-    { label: 'Pharmacies',      value: stats.stats.totalPharmacies, icon: <MdOutlineLocalPharmacy />, color: 'info' },
-    { label: 'Distributors',    value: stats.stats.totalDistributors, icon: <MdLocalShipping />, color: 'amber' },
-    { label: 'Medicines',       value: stats.stats.totalMedicines, icon: <MdOutlineLocalPharmacy />, color: 'blue' },
-    { label: 'Total Users',     value: stats.stats.totalUsers,    icon: <FiUsers />, color: 'green' },
+    { label: 'Total Revenue (paid orders)', value: `PKR ${(stats.stats.totalRevenue||0).toLocaleString()}`, icon: <FiDollarSign />, color: 'green' },
+    { label: 'Total Orders', value: stats.stats.totalOrders ?? 0, icon: <FiBox />, color: 'blue' },
+    { label: 'Active Pharmacies', value: stats.stats.activePharmacies ?? stats.stats.totalPharmacies ?? 0, icon: <MdOutlineLocalPharmacy />, color: 'info' },
+    { label: 'Active Distributors', value: stats.stats.activeDistributors ?? stats.stats.totalDistributors ?? 0, icon: <MdLocalShipping />, color: 'amber' },
+    { label: 'Total Medicines', value: stats.stats.totalMedicines ?? 0, icon: <MdOutlineLocalPharmacy />, color: 'blue' },
+    { label: 'Total Users', value: stats.stats.totalUsers ?? 0, icon: <FiUsers />, color: 'green' },
   ] : [];
 
   if (loading) return (
@@ -95,7 +127,7 @@ export default function AdminDashboard() {
       <SidebarNav role="admin" navItems={AdminNavItems} />
       <div className="main-content">
         <TopBar title="Admin Dashboard" />
-        <div className="page-content animate-fade">
+        <div className="page-content animate-fade" style={{ paddingTop: 40 }}>
 
           <div className="page-header">
             <h1><FiBarChart2 style={{marginRight:12}}/> Analytics Overview</h1>
@@ -230,11 +262,11 @@ export default function AdminDashboard() {
             <div className="table-wrapper">
               <table className="data-table">
                 <thead>
-                  <tr><th>Order ID</th><th>Pharmacy</th><th>Distributor</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+                  <tr><th>Order ID</th><th>Pharmacy</th><th>Distributor</th><th>Amount</th><th>Status</th><th>Payment</th><th>Date</th></tr>
                 </thead>
                 <tbody>
                   {(stats?.recentOrders || []).length === 0 ? (
-                    <tr><td colSpan={6} style={{ textAlign:'center', color:'#9CA3AF', padding:32 }}>No orders yet</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign:'center', color:'#9CA3AF', padding:32 }}>No orders yet</td></tr>
                   ) : (stats?.recentOrders || []).map(o => (
                     <tr key={o._id}>
                       <td style={{ fontWeight:700, color:'#1565C0', fontFamily:'monospace', fontSize:13 }}>#{o._id.slice(-8).toUpperCase()}</td>
@@ -242,9 +274,15 @@ export default function AdminDashboard() {
                       <td>{o.distributorId?.companyName || '—'}</td>
                       <td style={{ fontWeight:600 }}>PKR {(o.totalAmount||0).toLocaleString()}</td>
                       <td>
-                        <span className={`badge badge-${o.status==='delivered'?'green':o.status==='pending'?'amber':o.status==='rejected'?'red':'blue'}`}>
-                          {o.status}
+                        <span className={`badge ${getWorkflowBadgeClass(o.status)}`}>
+                          {getWorkflowLabel(o.status).toUpperCase()}
                         </span>
+                      </td>
+                      <td>
+                        {(() => {
+                          const paymentStatus = normalizePaymentStatus(invoiceByOrderId[o._id?.toString?.() || o._id]?.paymentStatus);
+                          return <span className={`badge ${getPaymentBadgeClass(paymentStatus)}`}>{getPaymentLabel(paymentStatus).toUpperCase()}</span>;
+                        })()}
                       </td>
                       <td style={{ color:'#6B7280', fontSize:13 }}>{new Date(o.createdAt).toLocaleDateString()}</td>
                     </tr>

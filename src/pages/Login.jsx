@@ -50,8 +50,8 @@ export default function Login() {
     if (!form.email || !form.password) { setError('Please fill in all fields.'); return; }
     setLoading(true);
     setError('');
-    // Pass undefined for role so the backend auto-resolves it. This allows admins to log in via any tab.
-    const result = await login(form.email, form.password, undefined);
+    // Pass the selected role tab so the backend validates role match
+    const result = await login(form.email, form.password, activeRole);
     setLoading(false);
     if (!result.success) {
       if (result.requiresVerification) {

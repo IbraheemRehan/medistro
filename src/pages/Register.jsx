@@ -28,7 +28,7 @@ export default function Register() {
     // shared
     address: '',
     // distributor
-    companyName: '', licenseNumber: '', NTN: '', contactNumber: '',
+    companyName: '', licenseNumber: '', NTN: '', contactNumber: '', alternateNumber: '', businessEmail: '',
     // pharmacy
     pharmacyName: '', drugLicenseNumber: '', ownerName: '', creditLimit: '',
   });
@@ -47,11 +47,11 @@ export default function Register() {
   const validateProfile = () => {
     if (!profile.address.trim()) return 'Address is required.';
     if (role === 'distributor') {
-      if (!profile.companyName || !profile.licenseNumber || !profile.NTN || !profile.contactNumber)
+      if (!profile.companyName || !profile.licenseNumber || !profile.NTN || !profile.contactNumber || !profile.businessEmail)
         return 'All distributor fields are required.';
     }
     if (role === 'pharmacy') {
-      if (!profile.pharmacyName || !profile.drugLicenseNumber || !profile.ownerName)
+      if (!profile.pharmacyName || !profile.drugLicenseNumber || !profile.ownerName || !profile.contactNumber || !profile.businessEmail)
         return 'All pharmacy fields are required.';
     }
     return null;
@@ -215,6 +215,14 @@ export default function Register() {
                       <label className="form-label">Contact Number</label>
                       <input id="reg-contact" name="contactNumber" className="form-input" placeholder="+92 300 0000000" value={profile.contactNumber} onChange={handleProfile}/>
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Alternate Number (Optional)</label>
+                      <input name="alternateNumber" className="form-input" placeholder="+92 311 0000000" value={profile.alternateNumber} onChange={handleProfile}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Business Email</label>
+                      <input name="businessEmail" className="form-input" placeholder="accounts@medco.com" value={profile.businessEmail} onChange={handleProfile}/>
+                    </div>
                   </>
                 )}
 
@@ -227,6 +235,18 @@ export default function Register() {
                     <div className="form-group">
                       <label className="form-label">Owner Name</label>
                       <input id="reg-owner" name="ownerName" className="form-input" placeholder="Dr. Ahmed" value={profile.ownerName} onChange={handleProfile}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Contact Number</label>
+                      <input name="contactNumber" className="form-input" placeholder="+92 300 0000000" value={profile.contactNumber} onChange={handleProfile}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Alternate Number (Optional)</label>
+                      <input name="alternateNumber" className="form-input" placeholder="+92 311 0000000" value={profile.alternateNumber} onChange={handleProfile}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Business Email</label>
+                      <input name="businessEmail" className="form-input" placeholder="contact@citypharmacy.com" value={profile.businessEmail} onChange={handleProfile}/>
                     </div>
                     <div className="form-group">
                       <label className="form-label">Drug License Number</label>

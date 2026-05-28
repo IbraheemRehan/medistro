@@ -82,6 +82,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // ── Admin Login ───────────────────────────────────────────
+  const adminLogin = useCallback(async (email, password) => {
+    try {
+      const { data } = await API.post('/api/v1/users/admin-login', { email, password });
+      const { user: userData, token: authToken } = data;
+      setUser(userData);
+      setToken(authToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', authToken);
+      return { success: true, role: userData.role };
+    } catch (err) {
+      const errData = err.response?.data || {};
+      return {
+        success: false,
+        message: errData.message || 'Admin login failed.',
+      };
+    }
+  }, []);
+
   // ── Verify Email OTP ───────────────────────────────────────
   const verifyEmail = useCallback(async (email, otp) => {
     try {
@@ -146,7 +165,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user, token, loading,
     isAuthenticated: !!user,
-    login, logout, register,
+    login, logout, register, adminLogin,
     verifyEmail, resendOTP,
     sendForgotPasswordOTP, resetPassword,
     loginWithGoogleToken,

@@ -2,7 +2,9 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import '../styles/TopBar.css';
-import { FiMenu, FiUser, FiLock, FiLogOut } from 'react-icons/fi';
+import { FiMenu, FiUser, FiLock, FiLogOut, FiBell } from 'react-icons/fi';
+import API from '../config/api.config';
+import { useSocket } from '../context/SocketContext';
 
 export default function TopBar({ title }) {
   const { user, logout } = useContext(AuthContext);
@@ -10,6 +12,20 @@ export default function TopBar({ title }) {
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef(null);
+
+  const { notifications, unreadCount, markAsRead, markAllRead } = useSocket();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -58,13 +74,52 @@ export default function TopBar({ title }) {
       <div className="topbar-right">
         {/* Greeting */}
         <span className="topbar-greeting">
-          Hello, <strong>{user?.username || 'User'}</strong>
+          Hello, <strong className="topbar-username">{user?.username || 'User'}</strong> <span className="topbar-role">({user?.role})</span>
         </span>
 
-        {/* Role badge */}
-        <span className={`badge badge-${user?.role === 'admin' ? 'blue' : user?.role === 'pharmacy' ? 'green' : user?.role === 'distributor' ? 'amber' : 'blue'}`}>
-          {user?.role}
-        </span>
+        {/* Notifications Bell */}
+        {user && (
+          <div className="topbar-notifications-wrapper" ref={notifRef}>
+            <button 
+              className="topbar-notif-btn" 
+              onClick={() => setNotifOpen(v => !v)}
+              aria-label="Notifications"
+            >
+              <FiBell />
+              {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+            </button>
+
+            {notifOpen && (
+              <div className="topbar-notif-dropdown">
+                <div className="topbar-notif-header">
+                  <h3>Notifications</h3>
+                  {notifications.length > 0 && (
+                    <button className="btn-text btn-sm" style={{ padding: 0, textDecoration: 'none', color: 'var(--brand)', fontSize: 11 }} onClick={markAllRead}>
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="topbar-notif-divider"/>
+                <div className="topbar-notif-list">
+                  {notifications.length === 0 ? (
+                    <div className="no-notifs">No notifications.</div>
+                  ) : (
+                    notifications.map(n => (
+                      <div 
+                        key={n._id} 
+                        className={`notif-item ${n.isRead ? 'read' : 'unread'}`}
+                        onClick={() => markAsRead(n._id)}
+                      >
+                        <p>{n.message}</p>
+                        <span className="notif-time">{new Date(n.createdAt).toLocaleString()}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Avatar + Dropdown */}
         <div className="topbar-avatar-wrapper" ref={dropRef}>
