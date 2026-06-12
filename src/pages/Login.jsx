@@ -57,7 +57,6 @@ export default function Login() {
       if (result.requiresVerification) {
         setNeedsVerify({
           email: result.email || form.email,
-          dev_otp: result.dev_otp
         });
       } else {
         setError(result.message);
@@ -67,7 +66,6 @@ export default function Login() {
 
   if (needsVerify) {
     const emailToVerify = typeof needsVerify === 'object' ? needsVerify.email : needsVerify;
-    const devOtpToVerify = typeof needsVerify === 'object' ? needsVerify.dev_otp : '';
     return (
       <div className="auth-page">
         <PublicTopBar />
@@ -77,7 +75,7 @@ export default function Login() {
               <div className="auth-verify-icon"><FiMail /></div>
               <h2>Verify Your Email</h2>
               <p>Your email <strong>{emailToVerify}</strong> is not verified yet. Please check your inbox for the OTP.</p>
-              <Link to={`/verify-email?email=${encodeURIComponent(emailToVerify)}${devOtpToVerify ? `&dev_otp=${devOtpToVerify}` : ''}`} className="btn btn-primary btn-full" style={{marginTop:24}}>
+              <Link to={`/verify-email?email=${encodeURIComponent(emailToVerify)}`} className="btn btn-primary btn-full" style={{marginTop:24}}>
                 Enter OTP to Verify
               </Link>
               <button className="btn btn-secondary btn-full" style={{marginTop:12}} onClick={() => setNeedsVerify(null)}>

@@ -67,7 +67,6 @@ export const AuthProvider = ({ children }) => {
         message: errData.message || 'Login failed.',
         requiresVerification: errData.requiresVerification,
         email: errData.email,
-        dev_otp: errData.dev_otp, // Added to pass dev_otp
       };
     }
   }, []);
@@ -121,8 +120,8 @@ export const AuthProvider = ({ children }) => {
   // ── Resend OTP ─────────────────────────────────────────────
   const resendOTP = useCallback(async (email) => {
     try {
-      const { data } = await API.post('/api/v1/users/send-verification-otp', { email });
-      return { success: true, dev_otp: data.dev_otp };
+      await API.post('/api/v1/users/send-verification-otp', { email });
+      return { success: true };
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed to resend OTP.' };
     }
@@ -131,8 +130,8 @@ export const AuthProvider = ({ children }) => {
   // ── Forgot Password ────────────────────────────────────────
   const sendForgotPasswordOTP = useCallback(async (email) => {
     try {
-      const { data } = await API.post('/api/v1/users/forgot-password', { email });
-      return { success: true, dev_otp: data.dev_otp };
+      await API.post('/api/v1/users/forgot-password', { email });
+      return { success: true };
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed.' };
     }

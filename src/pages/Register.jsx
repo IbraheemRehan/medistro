@@ -77,7 +77,6 @@ export default function Register() {
 
     if (result.success) {
       let target = `/verify-email?email=${encodeURIComponent(account.email)}`;
-      if (result.dev_otp) target += `&dev_otp=${result.dev_otp}`;
       navigate(target);
     } else {
       setError(result.message);

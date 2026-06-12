@@ -18,7 +18,6 @@ export default function VerifyEmail() {
   const [success, setSuccess] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [devOtp, setDevOtp]       = useState(searchParams.get('dev_otp') || '');
   const inputRefs = useRef([]);
 
   // Countdown timer for resend
@@ -83,7 +82,6 @@ export default function VerifyEmail() {
     setResending(false);
     if (result.success) {
       setSuccess('New OTP sent! Check your inbox.');
-      if (result.dev_otp) setDevOtp(result.dev_otp);
       setCountdown(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
@@ -123,27 +121,6 @@ export default function VerifyEmail() {
 
           {error   && <div className="alert alert-error"   style={{ marginBottom: 16, textAlign: 'left' }}><FiAlertCircle style={{marginRight:8}}/> {error}</div>}
           {success && <div className="alert alert-success" style={{ marginBottom: 16, textAlign: 'left' }}><FiCheckCircle style={{marginRight:8}}/> {success}</div>}
-          
-          {devOtp && (
-            <div style={{ 
-              background: '#EFF6FF', 
-              border: '2px dashed #1565C0', 
-              borderRadius: '12px', 
-              padding: '16px', 
-              marginBottom: 20,
-              animation: 'fadeIn 0.5s ease-out'
-            }}>
-              <p style={{ margin: '0 0 4px', color: '#64748b', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
-                Development Mode OTP
-              </p>
-              <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 800, color: '#1565C0', letterSpacing: '4px' }}>
-                {devOtp}
-              </h1>
-              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: '11px' }}>
-                (Shown here because email delivery is limited in dev mode)
-              </p>
-            </div>
-          )}
 
           {/* OTP boxes */}
           <div className="otp-container" onPaste={handlePaste} style={{ marginBottom: 28 }}>
