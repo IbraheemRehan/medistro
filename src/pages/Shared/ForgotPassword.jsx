@@ -19,7 +19,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
-  const [devOtp, setDevOtp]   = useState('');
+
   const inputRefs = useRef([]);
 
   const handleOtpChange = (i, value) => {
@@ -43,7 +43,7 @@ export default function ForgotPassword() {
     const res = await sendForgotPasswordOTP(email);
     setLoading(false);
     if (res.success) { 
-      if (res.dev_otp) setDevOtp(res.dev_otp);
+
       setStep(1); 
     }
     else setError(res.message);
@@ -129,27 +129,6 @@ export default function ForgotPassword() {
               <p style={{ textAlign: 'center', fontSize: 14, color: '#6B7280', marginBottom: 20 }}>
                 Check <strong style={{ color: '#1565C0' }}>{email}</strong> for your reset code.
               </p>
-              {devOtp && (
-                <div style={{ 
-                  background: '#EFF6FF', 
-                  border: '2px dashed #1565C0', 
-                  borderRadius: '12px', 
-                  padding: '16px', 
-                  marginBottom: 20,
-                  textAlign: 'center',
-                  animation: 'fadeIn 0.5s ease-out'
-                }}>
-                  <p style={{ margin: '0 0 4px', color: '#64748b', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
-                    Development Mode OTP
-                  </p>
-                  <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 800, color: '#1565C0', letterSpacing: '4px' }}>
-                    {devOtp}
-                  </h1>
-                  <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: '11px' }}>
-                    (Shown here because email delivery is limited in dev mode)
-                  </p>
-                </div>
-              )}
               <div className="otp-container" onPaste={handlePaste} style={{ marginBottom: 28 }}>
                 {otp.map((digit, i) => (
                   <input
