@@ -344,7 +344,7 @@ const Profile = () => {
                   <div className="profile-header-info">
                     <h1 className="profile-header-name">{form.username || user?.username || "User"}</h1>
                     <p className="profile-header-email">{form.email || user?.email}</p>
-                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                    <div className="profile-badges-row">
                       <span className="profile-role-badge" style={{ background: roleStyle.bg, color: roleStyle.color }}>
                         {roleLabel}
                       </span>
