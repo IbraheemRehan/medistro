@@ -1,6 +1,7 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { useProfile } from '../context/ProfileContext';
 import '../styles/TopBar.css';
 import { FiMenu, FiUser, FiLock, FiLogOut, FiBell } from 'react-icons/fi';
 import API from '../config/api.config';
@@ -8,6 +9,7 @@ import { useSocket } from '../context/SocketContext';
 
 export default function TopBar({ title }) {
   const { user, logout } = useContext(AuthContext);
+  const { profileData } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -61,6 +63,8 @@ export default function TopBar({ title }) {
     employee:    '#1565C0',
   };
   const avatarColor = roleColors[user?.role] || '#1565C0';
+  const displayName = profileData?.username || user?.username || 'User';
+  const avatarSrc = profileData?.logo || profileData?.avatar || user?.avatar;
 
   return (
     <header className="topbar">
@@ -74,7 +78,7 @@ export default function TopBar({ title }) {
       <div className="topbar-right">
         {/* Greeting */}
         <span className="topbar-greeting">
-          Hello, <strong className="topbar-username">{user?.username || 'User'}</strong> <span className="topbar-role">({user?.role})</span>
+          Hello, <strong className="topbar-username">{displayName}</strong> <span className="topbar-role">({user?.role})</span>
         </span>
 
         {/* Notifications Bell */}
@@ -129,17 +133,17 @@ export default function TopBar({ title }) {
             onClick={() => setDropdownOpen(v => !v)}
             aria-label="User menu"
           >
-            {user?.avatar
-              ? <img src={user.avatar} alt="avatar" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }}/>
-              : (user?.username?.charAt(0).toUpperCase() || '?')
+            {avatarSrc
+              ? <img src={avatarSrc} alt="avatar" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} onError={(e) => { e.target.style.display='none'; e.target.parentNode.textContent = (displayName?.charAt(0).toUpperCase() || '?'); }} />
+              : (displayName?.charAt(0).toUpperCase() || '?')
             }
           </button>
 
           {dropdownOpen && (
             <div className="topbar-dropdown">
               <div className="topbar-dropdown-header">
-                <div style={{ fontWeight: 700, color: '#111827' }}>{user?.username}</div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{user?.email}</div>
+                <div style={{ fontWeight: 700, color: '#111827' }}>{displayName}</div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{profileData?.email || user?.email}</div>
               </div>
               <div className="topbar-dropdown-divider"/>
               <button className="topbar-dropdown-item" onClick={() => { navigate('/profile'); setDropdownOpen(false); }}>

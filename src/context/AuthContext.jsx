@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }) => {
     if (!token) return;
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const userData = { id: payload._id, email: payload.email, role: payload.role || role };
+      const userData = { id: payload._id, email: payload.email, role: payload.role || role, googleId: payload.googleId || 'google' };
       setUser(userData);
       setToken(token);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -161,6 +161,15 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Update user data in state + localStorage (used by profile saves)
+  const updateUser = useCallback((partialData) => {
+    setUser(prev => {
+      const updated = { ...prev, ...partialData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const value = {
     user, token, loading,
     isAuthenticated: !!user,
@@ -168,6 +177,7 @@ export const AuthProvider = ({ children }) => {
     verifyEmail, resendOTP,
     sendForgotPasswordOTP, resetPassword,
     loginWithGoogleToken,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

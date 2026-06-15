@@ -1,12 +1,14 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { useProfile } from '../context/ProfileContext';
 import '../styles/SidebarNav.css';
 import { MdOutlineLocalPharmacy } from 'react-icons/md';
 import { FiChevronLeft, FiChevronRight, FiLogOut } from 'react-icons/fi';
 
 export default function SidebarNav({ navItems = [], role }) {
   const { user, logout } = useContext(AuthContext);
+  const { profileData } = useProfile();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,6 +28,9 @@ export default function SidebarNav({ navItems = [], role }) {
     logout();
     navigate('/login');
   };
+
+  const displayName = profileData?.username || user?.username || 'User';
+  const avatarSrc = profileData?.logo || profileData?.avatar || user?.avatar;
 
   const roleLabel = role
     ? role.charAt(0).toUpperCase() + role.slice(1)
@@ -60,11 +65,20 @@ export default function SidebarNav({ navItems = [], role }) {
         {/* User Badge */}
         {!collapsed && (
           <div className="sidebar-user-badge" style={{ background: roleStyle.bg }}>
-            <div className="sidebar-avatar" style={{ background: roleStyle.color }}>
-              {user?.username?.charAt(0).toUpperCase() || '?'}
+            <div className="sidebar-avatar" style={{ background: roleStyle.color, overflow: 'hidden' }}>
+              {avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.textContent = displayName?.charAt(0).toUpperCase() || '?'; }}
+                />
+              ) : (
+                displayName?.charAt(0).toUpperCase() || '?'
+              )}
             </div>
             <div className="sidebar-user-info">
-              <div className="sidebar-username">{user?.username || 'User'}</div>
+              <div className="sidebar-username">{displayName}</div>
               <div className="sidebar-role-tag" style={{ color: roleStyle.color }}>{roleLabel}</div>
             </div>
           </div>

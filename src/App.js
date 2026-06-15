@@ -38,6 +38,7 @@ import Profile from './pages/Shared/Profile';
 
 // Context
 import AuthContext, { AuthProvider } from './context/AuthContext';
+import { ProfileProvider } from './context/ProfileContext';
 import { SocketProvider } from './context/SocketContext';
 
 // Google OAuth callback handler component
@@ -144,10 +145,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <SocketProvider>
-          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-          <AppContent />
-        </SocketProvider>
+        <ProfileProvider>
+          <SocketProvider>
+            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+            <AppContent />
+          </SocketProvider>
+        </ProfileProvider>
       </AuthProvider>
     </Router>
   );
