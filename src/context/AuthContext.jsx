@@ -67,6 +67,10 @@ export const AuthProvider = ({ children }) => {
         message: errData.message || 'Login failed.',
         requiresVerification: errData.requiresVerification,
         email: errData.email,
+        isBlocked: errData.isBlocked,
+        reason: errData.reason,
+        reviewRequested: errData.reviewRequested,
+        userId: errData.userId,
       };
     }
   }, []);

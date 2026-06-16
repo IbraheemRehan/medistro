@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import PublicTopBar from '../components/PublicTopBar';
 import '../styles/Auth.css';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle, FiXCircle } from 'react-icons/fi';
 import { MdOutlineLocalPharmacy } from 'react-icons/md';
+import API from '../config/api.config';
+import toast from 'react-hot-toast';
 
 const GOOGLE_AUTH_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/v1/users/auth/google`;
 
@@ -18,6 +20,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
   const [needsVerify, setNeedsVerify] = useState(null); // email that needs verification
+
+  // Suspension state
+  const [blockedInfo, setBlockedInfo] = useState(null);
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Handle Google OAuth redirect callback
   useEffect(() => {
@@ -58,9 +65,33 @@ export default function Login() {
         setNeedsVerify({
           email: result.email || form.email,
         });
+      } else if (result.isBlocked) {
+        setBlockedInfo({
+          userId: result.userId,
+          reason: result.reason,
+          reviewRequested: result.reviewRequested,
+        });
       } else {
         setError(result.message);
       }
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!reviewMessage.trim()) return toast.error("Please enter a message");
+    try {
+      setReviewSubmitting(true);
+      await API.post('/api/v1/users/request-review', {
+        userId: blockedInfo.userId,
+        message: reviewMessage
+      });
+      setBlockedInfo(prev => ({ ...prev, reviewRequested: true }));
+      toast.success("Review request submitted");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit request");
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -88,8 +119,61 @@ export default function Login() {
     );
   }
 
+  // Blocked modal overlay (render inline for simplicity)
+  const renderBlockedModal = () => {
+    if (!blockedInfo) return null;
+    return (
+      <div className="complete-profile-overlay" style={{ zIndex: 9999 }}>
+        <div className="complete-profile-modal" style={{ maxWidth: 480 }}>
+          <div className="complete-profile-modal-header">
+            <div className="complete-profile-modal-icon" style={{ background: "var(--danger)" }}>
+              <FiXCircle />
+            </div>
+            <h2>Account Suspended</h2>
+            <p style={{ color: "var(--danger)" }}>Your account has been temporarily blocked from accessing the platform.</p>
+          </div>
+          <div className="complete-profile-modal-body">
+            <div style={{ background: "var(--red-50)", padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--danger)", display: "block", marginBottom: 4 }}>Reason for Suspension:</span>
+              <p style={{ fontSize: 14, color: "var(--red-900)", margin: 0 }}>"{blockedInfo.reason}"</p>
+            </div>
+
+            {blockedInfo.reviewRequested ? (
+              <div style={{ background: "var(--blue-50)", padding: 16, borderRadius: 8, textAlign: "center" }}>
+                <span style={{ color: "var(--brand)", fontWeight: 600 }}>Review in Progress</span>
+                <p style={{ fontSize: 13, margin: "4px 0 0", color: "var(--gray-600)" }}>Your appeal has been submitted and is currently being reviewed by our administration team. We will notify you of the outcome.</p>
+                <button className="btn btn-secondary btn-full" style={{ marginTop: 16 }} onClick={() => setBlockedInfo(null)}>Back to Login</button>
+              </div>
+            ) : (
+              <form onSubmit={handleReviewSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Request an Appeal</label>
+                  <textarea
+                    className="form-input"
+                    rows={4}
+                    placeholder="Provide additional details or context for why your account should be reinstated..."
+                    value={reviewMessage}
+                    onChange={e => setReviewMessage(e.target.value)}
+                    style={{ resize: "vertical" }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+                  <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setBlockedInfo(null)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={reviewSubmitting}>
+                    {reviewSubmitting ? "Submitting..." : "Submit Appeal"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="auth-page">
+      {renderBlockedModal()}
       <PublicTopBar />
       <div className="auth-split">
         {/* Left brand panel */}
