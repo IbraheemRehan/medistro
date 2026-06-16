@@ -98,7 +98,7 @@ export default function TopBar({ title }) {
                 <div className="topbar-notif-header">
                   <h3>Notifications</h3>
                   {notifications.length > 0 && (
-                    <button className="btn-text btn-sm" style={{ padding: 0, textDecoration: 'none', color: 'black', fontSize: 11 }} onClick={markAllRead}>
+                    <button className="" style={{ padding: 0, textDecoration: 'none', color: 'black', fontSize: 11 }} onClick={markAllRead}>
                       Mark all read
                     </button>
                   )}
