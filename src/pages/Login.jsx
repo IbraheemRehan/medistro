@@ -32,11 +32,23 @@ export default function Login() {
     const gToken = params.get('token');
     const gRole  = params.get('role');
     const gError = params.get('error');
+    
     if (gToken) {
       loginWithGoogleToken(gToken, gRole);
       window.history.replaceState({}, '', '/login');
     }
-    if (gError) setError('Google login failed. Please try again.');
+    
+    if (gError === 'blocked') {
+      setBlockedInfo({
+        userId: params.get('userId'),
+        reason: decodeURIComponent(params.get('reason') || ''),
+        reviewRequested: params.get('reviewRequested') === 'true'
+      });
+      window.history.replaceState({}, '', '/login');
+    } else if (gError) {
+      setError('Google login failed. Please try again.');
+      window.history.replaceState({}, '', '/login');
+    }
   }, [loginWithGoogleToken]);
 
   // Redirect if already logged in

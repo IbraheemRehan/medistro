@@ -63,7 +63,7 @@
 .profile-header-name {
   font-size: 24px;
   font-weight: 800;
-  color: var(--gray-900);
+  color: rgb(236, 233, 227);
   margin: 0;
   line-height: 1.2;
 }
@@ -71,7 +71,7 @@
 .profile-header-email {
   font-size: 14px;
   color: var(--gray-500);
-  margin: 12px 0 10px;
+  margin: 4px 0 10px;
 }
 
 .profile-badges-row {
